@@ -1,9 +1,10 @@
 extends Node2D
 
 # === PLATFORM WORKAROUNDS ===
-# See the comment block at the top of Ball.gd for the full explanation.
-# This file contains some related mitigations (launch delay, boundary safety nets,
-# and re-applying collision layers).
+# See the big comment block at the top of Ball.gd for the full story.
+# In short: on this Android + Godot 4.7 beta setup the Ball script sometimes fails
+# to attach at load time, so we force it here and have to use manual collision
+# checks in Ball.gd because normal physics breaks after set_script().
 # ============================
 
 const PADDLE_SCENE = preload("res://scenes/pong/Paddle.tscn")
@@ -40,11 +41,28 @@ func _ready():
 	ball.modulate = Color(1, 1, 1, 1)
 	ball.z_index = 100
 	
-	# Small delay before launching the ball.
-	# This helps on Android + certain Godot versions where the physics server needs a moment to settle.
+	# On this user's Android + Godot 4.7 beta setup, the Ball script sometimes fails to
+	# attach at scene load. We force it here (after a short delay) as a workaround.
+	# This is the main remaining hack — everything else should be normal Godot code.
 	var launch_timer = get_tree().create_timer(0.1)
 	launch_timer.timeout.connect(func():
-		if is_instance_valid(ball):
+		if not is_instance_valid(ball):
+			return
+		
+		# Force-attach the script if it's missing
+		if not ball.has_method("reset_ball"):
+			var ball_script = load("res://scenes/pong/Ball.gd")
+			if ball_script:
+				ball.set_script(ball_script)
+				ball.set_process(true)
+				ball.set_physics_process(true)
+				# Re-apply layers — these can get lost after set_script()
+				ball.collision_layer = 2
+				ball.collision_mask = 1 | 4 | 8
+				print("Runtime-forced Ball.gd script (platform workaround)")
+		
+		# Now safe to call
+		if ball.has_method("reset_ball"):
 			ball.reset_ball()
 			
 			if ball.velocity.length() < 50:
@@ -52,6 +70,8 @@ func _ready():
 				ball.velocity = dir * 420.0
 			
 			ball.queue_redraw()
+		else:
+			push_error("Ball script still not attached after forcing. This is unexpected.")
 	)
 
 	
@@ -237,14 +257,27 @@ func goal_scored(player_index: int):
 	
 	var respawn_timer = get_tree().create_timer(1.0)
 	respawn_timer.timeout.connect(func():
-		if is_instance_valid(ball) and ball.has_method("reset_ball"):
+		if not is_instance_valid(ball):
+			return
+		
+		# Force script again if needed (can happen after scene changes on this platform)
+		if not ball.has_method("reset_ball"):
+			var ball_script = load("res://scenes/pong/Ball.gd")
+			if ball_script:
+				ball.set_script(ball_script)
+				ball.set_process(true)
+				ball.set_physics_process(true)
+				ball.collision_layer = 2
+				ball.collision_mask = 1 | 4 | 8
+		
+		if ball.has_method("reset_ball"):
 			ball.reset_ball()
 			ball.collision_layer = 2
 			ball.collision_mask = 1 | 4 | 8
 			ball.queue_redraw()
 			last_hit_player = -1
 		else:
-			push_error("Ball is missing reset_ball method during respawn.")
+			push_error("Ball is still missing reset_ball method during respawn.")
 	)
 
 # === PLATFORM WORKAROUNDS ===
