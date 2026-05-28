@@ -30,7 +30,6 @@ func _ready():
 	# Explicitly position the ball here (after screen_size is known)
 	# This is more reliable than the ball setting its own position in _ready()
 	ball.position = screen_size / 2
-	print("Ball position set to: ", ball.position)
 	
 	# Robust runtime forcing + collision fix (required on this Android + Godot 4.7 beta setup)
 	if not ball.has_method("reset_ball"):
@@ -39,7 +38,6 @@ func _ready():
 			ball.set_script(ball_script)
 			ball.set_process(true)
 			ball.set_physics_process(true)
-			print("Forcibly attached Ball.gd script + re-enabled processing")
 	
 	# Always re-apply correct collision layers after any script change
 	ball.collision_layer = 2
@@ -62,8 +60,6 @@ func _ready():
 			# Wake up the physics body (very important after set_script on this platform)
 			ball.move_and_collide(ball.velocity * 0.016)
 			ball.queue_redraw()
-			
-			print("Ball launched with velocity: ", ball.velocity)
 		else:
 			push_error("Ball node does not have 'reset_ball' method after launch delay. The script is probably not attached.")
 	)
@@ -261,10 +257,6 @@ func goal_scored(player_index: int):
 	)
 
 func _physics_process(delta):
-	# Heartbeat debug - confirm this function is running
-	if Engine.get_frames_drawn() % 30 == 0:
-		print("PongArena _physics_process running. Ball pos=", ball.position if is_instance_valid(ball) else "INVALID")
-	
 	# Safety net: if the ball somehow flies off the sides (e.g. passed through paddle)
 	# force a goal so it always respawns.
 	if not is_instance_valid(ball):

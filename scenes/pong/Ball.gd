@@ -18,7 +18,6 @@ func _ready():
 	
 	reset_ball()
 	queue_redraw()
-	print("Ball _ready() ran. Position: ", position)
 
 func _draw():
 	# Nice ball with a surrounding circle/ring that the user liked
@@ -122,8 +121,6 @@ func _physics_process(delta):
 			
 			# Very generous margins so the ball can't slip through
 			if abs(dx) < 25 and abs(dy) < 75:
-				print("MANUAL PADDLE HIT! side=", "left" if paddle == p.left_paddle else "right")
-				
 				var normal = Vector2.LEFT if dx < 0 else Vector2.RIGHT
 				velocity = velocity.bounce(normal)
 				velocity = velocity.normalized() * max(velocity.length() * 1.05, 380)
