@@ -1,5 +1,11 @@
 extends Node2D
 
+# === PLATFORM WORKAROUNDS ===
+# See the comment block at the top of Ball.gd for the full explanation.
+# This file contains some related mitigations (launch delay, boundary safety nets,
+# and re-applying collision layers).
+# ============================
+
 const PADDLE_SCENE = preload("res://scenes/pong/Paddle.tscn")
 const GOAL_SCENE = preload("res://scenes/pong/Goal.tscn")
 const BOUNCER_SCENE = preload("res://scenes/pong/Bouncer.tscn")
@@ -34,10 +40,11 @@ func _ready():
 	ball.modulate = Color(1, 1, 1, 1)
 	ball.z_index = 100
 	
-	# Launch the ball after a tiny delay so the physics server has time to settle
+	# Small delay before launching the ball.
+	# This helps on Android + certain Godot versions where the physics server needs a moment to settle.
 	var launch_timer = get_tree().create_timer(0.1)
 	launch_timer.timeout.connect(func():
-		if is_instance_valid(ball) and ball.has_method("reset_ball"):
+		if is_instance_valid(ball):
 			ball.reset_ball()
 			
 			if ball.velocity.length() < 50:
@@ -45,11 +52,8 @@ func _ready():
 				ball.velocity = dir * 420.0
 			
 			ball.queue_redraw()
-		else:
-			# This can happen on first run due to script caching on Android.
-			# A project reload usually fixes it.
-			print("Warning: Ball script not ready on first launch (common on Android). Reload the project if the ball doesn't move.")
 	)
+
 	
 	update_score_ui()
 
@@ -243,6 +247,12 @@ func goal_scored(player_index: int):
 			push_error("Ball is missing reset_ball method during respawn.")
 	)
 
+# === PLATFORM WORKAROUNDS ===
+# See Ball.gd for explanation of why we have manual collision systems.
+# The boundary safety checks below are also part of making the game robust
+# on Android + Godot beta when physics can behave strangely.
+# ============================
+
 func _physics_process(delta):
 	# Safety net: if the ball somehow flies off the sides (e.g. passed through paddle)
 	# force a goal so it always respawns.
@@ -266,48 +276,5 @@ func _physics_process(delta):
 		if SoundManager:
 			SoundManager.play_wall_hit()
 	
-	# Manual paddle collision (because runtime set_script() breaks normal CharacterBody2D collisions on this platform)
-	_check_manual_paddle_collision(left_paddle)
-	_check_manual_paddle_collision(right_paddle)
-
-
-func _check_manual_paddle_collision(paddle):
-	if not is_instance_valid(paddle) or not is_instance_valid(ball):
-		return
-	if not paddle.has_method("player_index"):
-		return
-	
-	# Paddle is vertical, size approx 20x120
-	var paddle_half_width = 10.0
-	var paddle_half_height = 60.0
-	
-	var dx = ball.position.x - paddle.position.x
-	var dy = ball.position.y - paddle.position.y
-	
-	# Detection margin (generous because normal collisions are unreliable after runtime script forcing)
-	var detection_width = paddle_half_width + 25
-	var detection_height = paddle_half_height + 25
-	
-	if abs(dx) < detection_width and abs(dy) < detection_height:
-		print("PADDLE OVERLAP DETECTED! paddle=", paddle.player_index, " dx=", dx, " dy=", dy, " ball_vel=", ball.velocity)
-		
-		# Hit detected
-		var normal = Vector2.LEFT if dx < 0 else Vector2.RIGHT
-		ball.velocity = ball.velocity.bounce(normal)
-		ball.velocity = ball.velocity.normalized() * max(ball.velocity.length() * 1.03, 350)
-		
-		_on_ball_hit_paddle(paddle.player_index)
-		
-		if SoundManager:
-			SoundManager.play_paddle_hit()
-		
-		if ball.get("is_icy") and ball.is_icy and paddle.has_method("freeze"):
-			paddle.freeze(2.6)
-		
-		var push = normal * 20
-		ball.position += push
-	else:
-		# Debug disabled now that paddles are working reliably
-		pass
-		# if Time.get_ticks_msec() < 8000:
-		# 	print("Paddle check: paddle=", paddle.player_index, " dx=", round(dx), " dy=", round(dy))
+	# Note: Paddle collision logic lives in Ball.gd due to platform-specific issues
+	# (see comments at the top of Ball.gd).

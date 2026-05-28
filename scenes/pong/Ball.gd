@@ -1,5 +1,20 @@
-class_name Ball
 extends CharacterBody2D
+
+# === PLATFORM WORKAROUNDS ===
+# On this user's setup (Android + Godot 4.7 beta via Termux), the Ball script sometimes
+# fails to attach properly at scene load. When that happens, we fall back to runtime
+# forcing in PongArena.gd.
+#
+# Unfortunately, calling set_script() at runtime on a CharacterBody2D breaks normal
+# physics collisions with other CharacterBody2Ds (paddles) and can make Area2D signals
+# unreliable.
+#
+# Because of that, we have manual overlap/distance checks for paddles, bumpers, and
+# power-ups below. These are only needed on this specific platform/setup.
+#
+# If normal script attachment becomes reliable in the future, most of this manual
+# collision code can be removed.
+# ============================
 
 @export var initial_speed: float = 420.0
 @export var speed_increment: float = 18.0
