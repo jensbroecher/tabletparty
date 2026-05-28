@@ -76,10 +76,6 @@ func _on_body_entered(body):
 		# Voice announcement
 		if VoiceAnnouncer:
 			VoiceAnnouncer.play_powerup(type)
-		
-		# Voice announcement for the power-up
-		if VoiceAnnouncer:
-			VoiceAnnouncer.play_powerup(type)
 
 
 func _despawn_animation():
