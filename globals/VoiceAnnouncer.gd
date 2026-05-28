@@ -6,20 +6,22 @@ extends Node
 ## 
 ## HOW TO ADD VOICES:
 ## 1. Generate or record voice clips (recommended: ElevenLabs, Google TTS, or record yourself)
-## 2. Export as .wav or .ogg (mono is fine)
+## 2. Export as .wav, .ogg, or .mp3 (mono is fine)
 ## 3. Place them in: res://assets/audio/voices/
+##
+## Note: MP3 is fully supported. The system will try .wav → .ogg → .mp3 automatically.
 ## 
 ## Suggested filenames (keep them short and clear):
-## - get_ready.wav
-## - go.wav
-## - fast.wav
-## - slow.wav
-## - reverse.wav
-## - ice.wav
-## - big_paddle.wav
-## - small_paddle.wav
-## - player_1_wins.wav
-## - player_2_wins.wav
+## - get_ready.wav / .ogg / .mp3
+## - go.wav / .ogg / .mp3
+## - fast.wav / .ogg / .mp3
+## - slow.wav / .ogg / .mp3
+## - reverse.wav / .ogg / .mp3
+## - ice.wav / .ogg / .mp3
+## - big_paddle.wav / .ogg / .mp3
+## - small_paddle.wav / .ogg / .mp3
+## - player_1_wins.wav / .ogg / .mp3
+## - player_2_wins.wav / .ogg / .mp3
 ##
 ## You can then call:
 ## VoiceAnnouncer.play("get_ready")
@@ -38,19 +40,20 @@ func _ready():
 
 ## Play a voice line by name (without extension)
 func play(voice_name: String) -> void:
-	var path = "res://assets/audio/voices/%s.wav" % voice_name
-	var stream = load(path)
+	var extensions = [".wav", ".ogg", ".mp3"]
+	var stream = null
 	
-	if stream == null:
-		# Try .ogg as fallback
-		path = "res://assets/audio/voices/%s.ogg" % voice_name
+	for ext in extensions:
+		var path = "res://assets/audio/voices/%s%s" % [voice_name, ext]
 		stream = load(path)
+		if stream != null:
+			break
 	
 	if stream:
 		player.stream = stream
 		player.play()
 	else:
-		print("VoiceAnnouncer: Could not find voice file: ", voice_name)
+		print("VoiceAnnouncer: Could not find voice file: ", voice_name, " (tried .wav, .ogg, .mp3)")
 
 ## Convenience function for power-up announcements
 func play_powerup(powerup_type: int) -> void:
