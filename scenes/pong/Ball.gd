@@ -1,5 +1,8 @@
 extends CharacterBody2D
 
+const BUMPER_HIT_PARTICLES = preload("res://scenes/pong/effects/BumperHitParticles.tscn")
+const POWERUP_COLLECT_PARTICLES = preload("res://scenes/pong/effects/PowerUpCollectParticles.tscn")
+
 # === PLATFORM WORKAROUNDS (Android + Godot 4.7 beta) ===
 # On this specific setup, the Ball script sometimes fails to attach at scene load.
 # We therefore force-attach it from PongArena.gd (see the comment block there).
@@ -157,6 +160,15 @@ func _physics_process(delta):
 	for pu in get_tree().get_nodes_in_group("powerups"):
 		if is_instance_valid(pu):
 			if position.distance_to(pu.position) < 22 + 22:
+				# Visual feedback - powerup collection particles
+				var particles = POWERUP_COLLECT_PARTICLES.instantiate()
+				particles.position = position
+				particles.emitting = true
+				# Try to tint particles with the powerup's color if possible
+				if pu.has_method("get") and pu.get("data") and pu.data.has("color"):
+					particles.color = pu.data["color"]
+				get_parent().add_child(particles)
+
 				apply_powerup(pu)
 				pu.queue_free()
 				break
@@ -176,6 +188,12 @@ func _physics_process(delta):
 
 				if SoundManager:
 					SoundManager.play_bouncer_hit()
+
+				# Visual feedback - bumper hit particles
+				var particles = BUMPER_HIT_PARTICLES.instantiate()
+				particles.position = position
+				particles.emitting = true
+				get_parent().add_child(particles)
 
 				position = b.position + normal * (22 + 28 + 2)
 				break

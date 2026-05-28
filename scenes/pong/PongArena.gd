@@ -41,27 +41,28 @@ func _ready():
 	ball.modulate = Color(1, 1, 1, 1)
 	ball.z_index = 100
 	
-	# On this user's Android + Godot 4.7 beta setup, the Ball script sometimes fails to
-	# attach at scene load. We force it here (after a short delay) as a workaround.
-	# This is the main remaining hack — everything else should be normal Godot code.
+	# Voice announcement
+	if VoiceAnnouncer:
+		VoiceAnnouncer.play_get_ready()
+	
+	# Small delay before launching the ball.
+	# This helps on Android + certain Godot versions where the physics server needs a moment to settle.
 	var launch_timer = get_tree().create_timer(0.1)
 	launch_timer.timeout.connect(func():
 		if not is_instance_valid(ball):
 			return
 		
-		# Force-attach the script if it's missing
+		# Force-attach the script if it's missing (platform workaround)
 		if not ball.has_method("reset_ball"):
 			var ball_script = load("res://scenes/pong/Ball.gd")
 			if ball_script:
 				ball.set_script(ball_script)
 				ball.set_process(true)
 				ball.set_physics_process(true)
-				# Re-apply layers — these can get lost after set_script()
 				ball.collision_layer = 2
 				ball.collision_mask = 1 | 4 | 8
 				print("Runtime-forced Ball.gd script (platform workaround)")
 		
-		# Now safe to call
 		if ball.has_method("reset_ball"):
 			ball.reset_ball()
 			
@@ -70,8 +71,10 @@ func _ready():
 				ball.velocity = dir * 420.0
 			
 			ball.queue_redraw()
-		else:
-			push_error("Ball script still not attached after forcing. This is unexpected.")
+			
+			# Voice announcement
+			if VoiceAnnouncer:
+				VoiceAnnouncer.play_go()
 	)
 
 	

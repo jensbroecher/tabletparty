@@ -72,6 +72,14 @@ func _on_body_entered(body):
 		# The ball will handle applying the effect
 		body.apply_powerup(self)
 		SoundManager.play_powerup_collected(type)
+		
+		# Voice announcement
+		if VoiceAnnouncer:
+			VoiceAnnouncer.play_powerup(type)
+		
+		# Voice announcement for the power-up
+		if VoiceAnnouncer:
+			VoiceAnnouncer.play_powerup(type)
 
 
 func _despawn_animation():

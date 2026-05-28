@@ -22,6 +22,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 GameManager="*res://globals/GameManager.gd"
 SoundManager="*res://globals/SoundManager.gd"
+VoiceAnnouncer="*res://globals/VoiceAnnouncer.gd"
 
 [display]
 
