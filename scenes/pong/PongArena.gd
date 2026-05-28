@@ -30,19 +30,6 @@ func _ready():
 	# Explicitly position the ball here (after screen_size is known)
 	# This is more reliable than the ball setting its own position in _ready()
 	ball.position = screen_size / 2
-	
-	# Robust runtime forcing + collision fix (required on this Android + Godot 4.7 beta setup)
-	if not ball.has_method("reset_ball"):
-		var ball_script = load("res://scenes/pong/Ball.gd")
-		if ball_script:
-			ball.set_script(ball_script)
-			ball.set_process(true)
-			ball.set_physics_process(true)
-	
-	# Always re-apply correct collision layers after any script change
-	ball.collision_layer = 2
-	ball.collision_mask = 1 | 4 | 8
-	
 	ball.visible = true
 	ball.modulate = Color(1, 1, 1, 1)
 	ball.z_index = 100
@@ -57,11 +44,11 @@ func _ready():
 				var dir = Vector2.RIGHT.rotated(randf_range(-0.5, 0.5))
 				ball.velocity = dir * 420.0
 			
-			# Wake up the physics body (very important after set_script on this platform)
-			ball.move_and_collide(ball.velocity * 0.016)
 			ball.queue_redraw()
 		else:
-			push_error("Ball node does not have 'reset_ball' method after launch delay. The script is probably not attached.")
+			# This can happen on first run due to script caching on Android.
+			# A project reload usually fixes it.
+			print("Warning: Ball script not ready on first launch (common on Android). Reload the project if the ball doesn't move.")
 	)
 	
 	update_score_ui()
@@ -297,9 +284,9 @@ func _check_manual_paddle_collision(paddle):
 	var dx = ball.position.x - paddle.position.x
 	var dy = ball.position.y - paddle.position.y
 	
-	# TEMP DEBUG: very generous detection so we can see if the check is even triggering
-	var detection_width = paddle_half_width + 40
-	var detection_height = paddle_half_height + 40
+	# Detection margin (generous because normal collisions are unreliable after runtime script forcing)
+	var detection_width = paddle_half_width + 25
+	var detection_height = paddle_half_height + 25
 	
 	if abs(dx) < detection_width and abs(dy) < detection_height:
 		print("PADDLE OVERLAP DETECTED! paddle=", paddle.player_index, " dx=", dx, " dy=", dy, " ball_vel=", ball.velocity)

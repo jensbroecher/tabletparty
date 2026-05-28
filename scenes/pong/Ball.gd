@@ -20,24 +20,27 @@ func _ready():
 	queue_redraw()
 
 func _draw():
-	# Nice ball with a surrounding circle/ring that the user liked
-	var ball_radius = 12.0
-	var ring_radius = 22.0
+	# Ball with a nice surrounding ring (the visual the user liked)
+	var ball_radius = 11.0
+	var ring_radius = 20.0
 	
-	var ball_color = Color(1, 1, 1) if not is_icy else Color(0.4, 0.85, 1.0)
+	var ball_color = Color(1, 1, 1) if not is_icy else Color(0.45, 0.82, 1.0)
 	
-	# Outer ring (the "circle" visual)
-	draw_circle(Vector2.ZERO, ring_radius, Color(0.2, 0.6, 1.0, 0.35))   # soft blue ring
-	draw_circle(Vector2.ZERO, ring_radius, Color(0.6, 0.9, 1.0, 0.9), false, 2.0)  # bright edge
+	# Soft outer glow/ring
+	draw_circle(Vector2.ZERO, ring_radius + 4, Color(0.3, 0.65, 1.0, 0.18))
+	
+	# Main ring
+	draw_circle(Vector2.ZERO, ring_radius, Color(0.25, 0.6, 0.95, 0.55))
+	draw_circle(Vector2.ZERO, ring_radius, Color(0.7, 0.9, 1.0, 0.95), false, 2.2)
 	
 	# Inner ball
 	draw_circle(Vector2.ZERO, ball_radius, ball_color)
 	
-	# Small highlight on the ball
-	draw_circle(Vector2(-4, -4), 5.0, Color(1, 1, 1, 0.5))
+	# Highlight
+	draw_circle(Vector2(-3.5, -3.5), 4.5, Color(1, 1, 1, 0.55))
 	
-	# Tiny center dot for style
-	draw_circle(Vector2.ZERO, 3.0, Color(0.1, 0.1, 0.1, 0.6))
+	# Small dark center for depth
+	draw_circle(Vector2.ZERO, 2.8, Color(0.15, 0.15, 0.2, 0.7))
 
 func stop_ball():
 	velocity = Vector2.ZERO
@@ -101,16 +104,14 @@ func _physics_process(delta):
 				is_icy = false
 				update_visual()
 
-	# === RELIABLE MANUAL PADDLE COLLISION ===
-	# Because runtime set_script() on this platform makes normal CharacterBody2D collisions with other CharacterBody2Ds unreliable,
-	# we do a simple, generous overlap check ourselves every frame.
+	# === MANUAL PADDLE COLLISION ===
+	# Runtime set_script() on Android + Godot 4.7 beta breaks normal CharacterBody2D collisions.
+	# We do a generous manual overlap check instead (this is the main workaround).
 	var p = get_parent()
 	if p:
 		var paddles = []
-		var left = p.get("left_paddle")
-		if left: paddles.append(left)
-		var right = p.get("right_paddle")
-		if right: paddles.append(right)
+		if p.left_paddle: paddles.append(p.left_paddle)
+		if p.right_paddle: paddles.append(p.right_paddle)
 		
 		for paddle in paddles:
 			if not is_instance_valid(paddle):
@@ -119,15 +120,14 @@ func _physics_process(delta):
 			var dx = position.x - paddle.position.x
 			var dy = position.y - paddle.position.y
 			
-			# Very generous margins so the ball can't slip through
+			# Generous margins so the ball can't slip through the paddles
 			if abs(dx) < 25 and abs(dy) < 75:
 				var normal = Vector2.LEFT if dx < 0 else Vector2.RIGHT
 				velocity = velocity.bounce(normal)
 				velocity = velocity.normalized() * max(velocity.length() * 1.05, 380)
 				
-				# Notify game systems
 				if p.has_method("_on_ball_hit_paddle"):
-					p._on_ball_hit_paddle(paddle.player_index if paddle.has_method("player_index") else 0)
+					p._on_ball_hit_paddle(paddle.player_index)
 				
 				if SoundManager:
 					SoundManager.play_paddle_hit()
@@ -135,36 +135,37 @@ func _physics_process(delta):
 				if is_icy and paddle.has_method("freeze"):
 					paddle.freeze(2.6)
 				
-				# Push out
 				position += normal * 18
-				break  # only handle one paddle per frame
+				break
 
-	# === MANUAL POWERUP / ITEM COLLECTION (reliable after runtime script forcing) ===
-	# Use distance based on the visual ring (22) so it triggers when the circle you like touches the item.
+	# === MANUAL BUMPER + ITEM DETECTION ===
+	# After runtime script forcing, normal collisions and Area signals are unreliable.
+	# We use distance checks based on the visual ring so the ball reacts when the circle visually touches things.
+
+	# Power-ups / Items
 	for pu in get_tree().get_nodes_in_group("powerups"):
 		if is_instance_valid(pu):
-			var dist = position.distance_to(pu.position)
-			if dist < 22 + 22:  # ball visual ring + powerup radius
+			if position.distance_to(pu.position) < 22 + 22:
 				apply_powerup(pu)
 				pu.queue_free()
 				break
 
-	# === MANUAL BUMPER / BOUNCER COLLISION (reliable after runtime script forcing) ===
-	# Matches the visual ring size so you see the reaction when the circle touches it.
+	# Bumpers (the pinball-style ones)
 	for b in get_tree().get_nodes_in_group("bumpers"):
 		if is_instance_valid(b):
-			var dist = position.distance_to(b.position)
-			if dist < 22 + 28:  # ball visual ring + bouncer collision radius
+			if position.distance_to(b.position) < 22 + 28:
 				var normal = (position - b.position).normalized()
 				if b.has_method("apply_bounce"):
 					velocity = b.apply_bounce(velocity.bounce(normal))
 				else:
 					velocity = velocity.bounce(normal)
+
 				if b.has_method("_on_ball_hit"):
 					b._on_ball_hit()
+
 				if SoundManager:
 					SoundManager.play_bouncer_hit()
-				# Push out so it doesn't stick
+
 				position = b.position + normal * (22 + 28 + 2)
 				break
 
