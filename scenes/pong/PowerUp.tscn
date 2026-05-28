@@ -16,21 +16,15 @@ script = ExtResource("1")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_1")
 
-[node name="Visual" type="ColorRect" parent="."]
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
-color = Color(0.9, 0.4, 0.2, 1)
+[node name="Ring" type="ColorRect" parent="."]
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.25, 0.55, 0.9, 0.35)
 
-[node name="Label" type="Label" parent="."]
-offset_left = -28.0
-offset_top = -10.0
-offset_right = 28.0
-offset_bottom = 10.0
-theme_override_font_sizes/font_size = 11
-text = "PWR"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="Icon" type="Sprite2D" parent="."]
+position = Vector2(0, 0)
+scale = Vector2(0.09, 0.09)
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]

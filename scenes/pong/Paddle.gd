@@ -6,6 +6,7 @@ var touch_index: int = -1
 var frozen: bool = false
 var freeze_time: float = 0.0
 var original_scale: Vector2 = Vector2.ONE
+var last_touch_y: float = 0.0
 
 @export var speed: float = 620.0
 @export var paddle_height: float = 120.0
@@ -18,6 +19,7 @@ func setup(index: int, color: Color):
 	paddle_color = color
 	visual.color = color
 	original_scale = scale
+	last_touch_y = get_viewport_rect().size.y / 2.0
 
 func _process(delta):
 	if frozen:
@@ -36,11 +38,13 @@ func _input(event):
 			if player_index == 0 and event.position.x < half or \
 			   player_index == 1 and event.position.x > half:
 				touch_index = event.index
+				last_touch_y = event.position.y
 		elif event.index == touch_index:
 			touch_index = -1
 	
 	if event is InputEventScreenDrag and event.index == touch_index and not frozen:
 		# Vertical paddles only (classic left/right)
+		last_touch_y = event.position.y
 		position.y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
 
 func freeze(duration: float):
@@ -71,5 +75,7 @@ func reset_paddle():
 	unfreeze()
 	scale = original_scale
 	collision.scale = Vector2.ONE
-	position.y = get_viewport_rect().size.y / 2
+	# Snap to where the user's finger currently is (or last was) instead of center
+	# This prevents the ugly "jump from center" on respawn
+	position.y = clamp(last_touch_y, 80, get_viewport_rect().size.y - 80)
 

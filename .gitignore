@@ -1,0 +1,17 @@
+# Godot 4+ specific
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Godot 3 specific (in case)
+.import/
+export.cfg
+export_presets.cfg
+
+# Misc
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
