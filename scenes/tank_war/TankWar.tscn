@@ -32,38 +32,32 @@ shadow_enabled = true
 [node name="Level" type="CSGCombiner3D" parent="."]
 use_collision = true
 
-# Safety floor (large invisible collision plane so bullets never fall through the world)
 [node name="SafetyFloor" type="StaticBody3D" parent="Level"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Level/SafetyFloor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.2, 0)
 shape = SubResource("WorldFloorShape")
 
-# Ground base
 [node name="Ground" type="CSGBox3D" parent="Level"]
 size = Vector3(160, 4, 160)
 material = SubResource("GroundMat")
 
-# Canyon floor (lower ground in middle)
 [node name="CanyonFloor" type="CSGBox3D" parent="Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 size = Vector3(120, 4, 35)
 operation = 2
 material = SubResource("GroundMat")
 
-# Left canyon wall
 [node name="LeftCanyonWall" type="CSGBox3D" parent="Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 6, 0)
 size = Vector3(8, 16, 120)
 material = SubResource("WallMat")
 
-# Right canyon wall
 [node name="RightCanyonWall" type="CSGBox3D" parent="Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 6, 0)
 size = Vector3(8, 16, 120)
 material = SubResource("WallMat")
 
-# Hills / Cover (left side)
 [node name="HillLeft1" type="CSGBox3D" parent="Level"]
 transform = Transform3D(0.96, 0, 0.28, 0, 1, 0, -0.28, 0, 0.96, -38, 3, -25)
 size = Vector3(35, 12, 28)
@@ -74,7 +68,6 @@ transform = Transform3D(0.8, 0, -0.6, 0, 1, 0, 0.6, 0, 0.8, -42, 4, 18)
 size = Vector3(30, 14, 25)
 material = SubResource("GroundMat")
 
-# Hills / Cover (right side)
 [node name="HillRight1" type="CSGBox3D" parent="Level"]
 transform = Transform3D(0.9, 0, 0.435, 0, 1, 0, -0.435, 0, 0.9, 40, 3.5, -22)
 size = Vector3(32, 13, 26)
@@ -85,7 +78,6 @@ transform = Transform3D(0.75, 0, -0.66, 0, 1, 0, 0.66, 0, 0.75, 38, 5, 25)
 size = Vector3(28, 15, 30)
 material = SubResource("GroundMat")
 
-# Ramps
 [node name="RampLeft" type="CSGBox3D" parent="Level"]
 transform = Transform3D(0.866, 0.5, 0, -0.5, 0.866, 0, 0, 0, 1, -22, 1, -45)
 size = Vector3(18, 3, 22)
@@ -123,7 +115,6 @@ text = "P1 (left side)  •  P2 (right side)  •  Hold buttons to drive  •  F
 horizontal_alignment = 1
 modulate = Color(0.95, 0.95, 1.0, 0.8)
 
-# ===================== P1 CONTROLS (left side) =====================
 [node name="P1Panel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 2
@@ -195,7 +186,6 @@ custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▼ REV"
 
-# ===================== P2 CONTROLS (right side) =====================
 [node name="P2Panel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 3
@@ -268,7 +258,6 @@ custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▼ REV"
 
-# ===================== TWO FIRE BUTTONS (center bottom) =====================
 [node name="FireP1Panel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 7
