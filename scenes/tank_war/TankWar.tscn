@@ -31,7 +31,7 @@ use_collision = true
 
 # Ground base
 [node name="Ground" type="CSGBox3D" parent="Level"]
-size = Vector3(120, 4, 120)
+size = Vector3(160, 4, 160)
 material = SubResource("GroundMat")
 
 # Canyon floor (lower ground in middle)
@@ -87,9 +87,9 @@ size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 35, 45, 35)
+transform = Transform3D(0.5, -0.36, 0.79, 0, 0.91, 0.41, -0.866, -0.205, 0.455, 8, 48, 52)
 current = true
-fov = 55.0
+fov = 58.0
 
 [node name="UI" type="Control" parent="."]
 layout_mode = 3
@@ -99,61 +99,126 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ControlButtons" type="Control" parent="UI"]
+[node name="HintLabel" type="Label" parent="UI"]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -280
+offset_top = 18
+offset_right = 280
+offset_bottom = 52
+theme_override_font_sizes/font_size = 20
+text = "DRIVE: Left buttons = turn  •  Right buttons = forward/reverse   •   FIRE to shoot"
+horizontal_alignment = 1
+modulate = Color(0.95, 0.95, 1.0, 0.85)
+
+[node name="LeftPanel" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 18
+offset_top = -272
+offset_right = 228
+offset_bottom = -16
+color = Color(0.08, 0.08, 0.1, 0.72)
+
+[node name="RightPanel" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20
-offset_top = -180
-offset_right = -20
-offset_bottom = -20
-grow_horizontal = 2
-grow_vertical = 2
+offset_left = -228
+offset_top = -272
+offset_right = -18
+offset_bottom = -16
+color = Color(0.08, 0.08, 0.1, 0.72)
 
-[node name="LeftButtons" type="VBoxContainer" parent="UI/ControlButtons"]
-layout_mode = 0
-offset_right = 180.0
-offset_bottom = 160.0
-
-[node name="TurnLeft" type="Button" parent="UI/ControlButtons/LeftButtons"]
-layout_mode = 2
-text = "◀ TURN LEFT"
-
-[node name="TurnRight" type="Button" parent="UI/ControlButtons/LeftButtons"]
-layout_mode = 2
-text = "TURN RIGHT ▶"
-
-[node name="RightButtons" type="VBoxContainer" parent="UI/ControlButtons"]
+[node name="LeftControls" type="VBoxContainer" parent="UI"]
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -180.0
-offset_right = 0.0
-offset_bottom = 160.0
-grow_horizontal = 0
+anchors_preset = 2
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 24
+offset_top = -260
+offset_right = 220
+offset_bottom = -24
+grow_horizontal = 1
+grow_vertical = 0
+theme_override_constants/separation = 14
 
-[node name="Forward" type="Button" parent="UI/ControlButtons/RightButtons"]
+[node name="TurnLeft" type="Button" parent="UI/LeftControls"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 82)
+theme_override_font_sizes/font_size = 30
+text = "◀ LEFT"
+
+[node name="TurnRight" type="Button" parent="UI/LeftControls"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 82)
+theme_override_font_sizes/font_size = 30
+text = "RIGHT ▶"
+
+[node name="RightControls" type="VBoxContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220
+offset_top = -260
+offset_right = -24
+offset_bottom = -24
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/separation = 14
+alignment = 2
+
+[node name="Forward" type="Button" parent="UI/RightControls"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 82)
+theme_override_font_sizes/font_size = 30
 text = "▲ FORWARD"
 
-[node name="Reverse" type="Button" parent="UI/ControlButtons/RightButtons"]
+[node name="Reverse" type="Button" parent="UI/RightControls"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 82)
+theme_override_font_sizes/font_size = 30
 text = "▼ REVERSE"
 
-[node name="FireButton" type="Button" parent="UI/ControlButtons"]
+[node name="FirePanel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -60.0
-offset_top = -80.0
-offset_right = 60.0
-offset_bottom = -20.0
+offset_left = -120
+offset_top = -142
+offset_right = 120
+offset_bottom = -16
+color = Color(0.55, 0.12, 0.12, 0.78)
+
+[node name="FireButton" type="Button" parent="UI"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -110
+offset_top = -130
+offset_right = 110
+offset_bottom = -24
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_font_sizes/font_size = 36
 text = "FIRE"
-theme_override_font_sizes/font_size = 24

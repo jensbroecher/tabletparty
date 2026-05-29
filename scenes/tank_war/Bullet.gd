@@ -4,6 +4,7 @@ extends RigidBody3D
 @export var damage: int = 1
 
 func _ready():
+	body_entered.connect(_on_body_entered)
 	# Destroy bullet after some time
 	await get_tree().create_timer(lifetime).timeout
 	if is_instance_valid(self):
