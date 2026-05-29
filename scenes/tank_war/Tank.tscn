@@ -44,4 +44,4 @@ material = SubResource("TurretMat")
 shape = SubResource("BoxShape3D_1")
 
 [node name="ShootPoint" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -5.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -5.8)
