@@ -4,6 +4,8 @@ extends Node3D
 # Fixed top-down camera (full arena overview for both players, Pong style)
 # Two-player touchscreen controls on one tablet
 
+# NOTE: Button wiring uses explicit get_node_or_null (more reliable on Android/Termux)
+
 @export var tank_scene: PackedScene = preload("res://scenes/tank_war/Tank.tscn")
 
 var tank1: CharacterBody3D
