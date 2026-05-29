@@ -46,4 +46,10 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "PONG"
 
+[node name="TankWarButton" type="Button" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "TANK WAR"
+
 [connection signal="pressed" from="VBox/PongButton" to="." method="_on_pong_pressed"]
+[connection signal="pressed" from="VBox/TankWarButton" to="." method="_on_tank_war_pressed"]
