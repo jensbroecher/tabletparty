@@ -4,12 +4,12 @@
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
-ambient_light_color = Color(0.6, 0.65, 0.7, 1)
-ambient_light_energy = 0.6
+ambient_light_color = Color(0.65, 0.68, 0.75, 1)
+ambient_light_energy = 1.15
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
-albedo_color = Color(0.55, 0.48, 0.38, 1)
-roughness = 0.9
+albedo_color = Color(0.68, 0.62, 0.52, 1)
+roughness = 0.85
 
 [sub_resource type="StandardMaterial3D" id="WallMat"]
 albedo_color = Color(0.45, 0.42, 0.38, 1)
@@ -26,7 +26,7 @@ environment = SubResource("Environment_1")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.433013, 0.25, 0.5, 0.75, -0.433013, 0, 0.5, 0.866025, 0, 20, 0)
-light_energy = 1.1
+light_energy = 2.0
 shadow_enabled = true
 
 [node name="Level" type="CSGCombiner3D" parent="."]

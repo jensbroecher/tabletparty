@@ -10,16 +10,6 @@ var tank1: CharacterBody3D
 var tank2: CharacterBody3D
 
 # Actual button paths from TankWar.tscn (2-player split layout)
-@onready var p1_turn_left: Button = $UI/P1Controls/P1TurnRow/P1TurnLeft
-@onready var p1_turn_right: Button = $UI/P1Controls/P1TurnRow/P1TurnRight
-@onready var p1_forward: Button = $UI/P1Controls/P1DriveRow/P1Forward
-@onready var p1_reverse: Button = $UI/P1Controls/P1DriveRow/P1Reverse
-
-@onready var p2_turn_left: Button = $UI/P2Controls/P2TurnRow/P2TurnLeft
-@onready var p2_turn_right: Button = $UI/P2Controls/P2TurnRow/P2TurnRight
-@onready var p2_forward: Button = $UI/P2Controls/P2DriveRow/P2Forward
-@onready var p2_reverse: Button = $UI/P2Controls/P2DriveRow/P2Reverse
-
 @onready var fire_p1_btn: Button = $UI/FireP1Button
 @onready var fire_p2_btn: Button = $UI/FireP2Button
 
@@ -53,16 +43,9 @@ func _ready():
 		body.material_override = StandardMaterial3D.new()
 		body.material_override.albedo_color = Color(0.55, 0.38, 0.32, 1)
 	
-	# Defensive button wiring (platform can be flaky)
-	_connect_button(p1_turn_left, "p1_left")
-	_connect_button(p1_turn_right, "p1_right")
-	_connect_button(p1_forward, "p1_forward")
-	_connect_button(p1_reverse, "p1_reverse")
-	
-	_connect_button(p2_turn_left, "p2_left")
-	_connect_button(p2_turn_right, "p2_right")
-	_connect_button(p2_forward, "p2_forward")
-	_connect_button(p2_reverse, "p2_reverse")
+	# Robust button wiring — fetch nodes fresh every time (avoids @onready flakiness)
+	_wire_p1_buttons()
+	_wire_p2_buttons()
 	
 	if fire_p1_btn:
 		fire_p1_btn.button_down.connect(func(): _on_fire_pressed(1))
@@ -78,38 +61,54 @@ func _ready():
 	if we and we.environment:
 		we.environment.background_mode = Environment.BG_COLOR
 		we.environment.background_color = Color(0.18, 0.22, 0.28, 1)
-		we.environment.ambient_light_color = Color(0.55, 0.58, 0.65, 1)
-		we.environment.ambient_light_energy = 0.75
+		we.environment.ambient_light_color = Color(0.65, 0.68, 0.75, 1)
+		we.environment.ambient_light_energy = 1.15
 
-func _connect_button(btn: Button, action: String):
-	if not btn:
-		push_warning("Missing button for action: " + action)
+# Safe explicit wiring for Player 1 (left side)
+func _wire_p1_buttons():
+	var base = "UI/P1Controls/"
+	
+	var btn_l = get_node_or_null(base + "P1TurnRow/P1TurnLeft")
+	var btn_r = get_node_or_null(base + "P1TurnRow/P1TurnRight")
+	var btn_f = get_node_or_null(base + "P1DriveRow/P1Forward")
+	var btn_rev = get_node_or_null(base + "P1DriveRow/P1Reverse")
+	
+	if not btn_l or not btn_r or not btn_f or not btn_rev:
+		push_warning("TANK WAR: One or more P1 buttons are missing from the scene!")
 		return
-	match action:
-		"p1_left":
-			btn.button_down.connect(func(): p1_input_left = true)
-			btn.button_up.connect(func(): p1_input_left = false)
-		"p1_right":
-			btn.button_down.connect(func(): p1_input_right = true)
-			btn.button_up.connect(func(): p1_input_right = false)
-		"p1_forward":
-			btn.button_down.connect(func(): p1_input_forward = true)
-			btn.button_up.connect(func(): p1_input_forward = false)
-		"p1_reverse":
-			btn.button_down.connect(func(): p1_input_reverse = true)
-			btn.button_up.connect(func(): p1_input_reverse = false)
-		"p2_left":
-			btn.button_down.connect(func(): p2_input_left = true)
-			btn.button_up.connect(func(): p2_input_left = false)
-		"p2_right":
-			btn.button_down.connect(func(): p2_input_right = true)
-			btn.button_up.connect(func(): p2_input_right = false)
-		"p2_forward":
-			btn.button_down.connect(func(): p2_input_forward = true)
-			btn.button_up.connect(func(): p2_input_forward = false)
-		"p2_reverse":
-			btn.button_down.connect(func(): p2_input_reverse = true)
-			btn.button_up.connect(func(): p2_input_reverse = false)
+	
+	btn_l.button_down.connect(func(): p1_input_left = true)
+	btn_l.button_up.connect(func(): p1_input_left = false)
+	btn_r.button_down.connect(func(): p1_input_right = true)
+	btn_r.button_up.connect(func(): p1_input_right = false)
+	
+	btn_f.button_down.connect(func(): p1_input_forward = true)
+	btn_f.button_up.connect(func(): p1_input_forward = false)
+	btn_rev.button_down.connect(func(): p1_input_reverse = true)
+	btn_rev.button_up.connect(func(): p1_input_reverse = false)
+
+# Safe explicit wiring for Player 2 (right side)
+func _wire_p2_buttons():
+	var base = "UI/P2Controls/"
+	
+	var btn_l = get_node_or_null(base + "P2TurnRow/P2TurnLeft")
+	var btn_r = get_node_or_null(base + "P2TurnRow/P2TurnRight")
+	var btn_f = get_node_or_null(base + "P2DriveRow/P2Forward")
+	var btn_rev = get_node_or_null(base + "P2DriveRow/P2Reverse")
+	
+	if not btn_l or not btn_r or not btn_f or not btn_rev:
+		push_warning("TANK WAR: One or more P2 buttons are missing from the scene!")
+		return
+	
+	btn_l.button_down.connect(func(): p2_input_left = true)
+	btn_l.button_up.connect(func(): p2_input_left = false)
+	btn_r.button_down.connect(func(): p2_input_right = true)
+	btn_r.button_up.connect(func(): p2_input_right = false)
+	
+	btn_f.button_down.connect(func(): p2_input_forward = true)
+	btn_f.button_up.connect(func(): p2_input_forward = false)
+	btn_rev.button_down.connect(func(): p2_input_reverse = true)
+	btn_rev.button_up.connect(func(): p2_input_reverse = false)
 
 func _on_fire_pressed(player: int = 1):
 	if player == 1 and tank1 and tank1.has_method("shoot") and tank1.can_shoot():
