@@ -1,58 +1,77 @@
 extends Node3D
 
 # Tank War - low poly CSG 3D local multiplayer tank game
-# Current: single player driving test with chase camera + 2 visible tanks
-# TODO: split-screen or dual control sets for true 2-player on one tablet
+# Fixed top-down camera (full arena overview for both players, Pong style)
+# Two-player touchscreen controls on one tablet
 
 @export var tank_scene: PackedScene = preload("res://scenes/tank_war/Tank.tscn")
 
 var tank1: CharacterBody3D
 var tank2: CharacterBody3D
 
-# Actual button paths from TankWar.tscn
-@onready var btn_turn_left: Button = $UI/LeftControls/TurnLeft
-@onready var btn_turn_right: Button = $UI/LeftControls/TurnRight
-@onready var btn_forward: Button = $UI/RightControls/Forward
-@onready var btn_reverse: Button = $UI/RightControls/Reverse
-@onready var btn_fire: Button = $UI/FireButton
+# Actual button paths from TankWar.tscn (2-player split layout)
+@onready var p1_turn_left: Button = $UI/P1Controls/P1TurnRow/P1TurnLeft
+@onready var p1_turn_right: Button = $UI/P1Controls/P1TurnRow/P1TurnRight
+@onready var p1_forward: Button = $UI/P1Controls/P1DriveRow/P1Forward
+@onready var p1_reverse: Button = $UI/P1Controls/P1DriveRow/P1Reverse
+
+@onready var p2_turn_left: Button = $UI/P2Controls/P2TurnRow/P2TurnLeft
+@onready var p2_turn_right: Button = $UI/P2Controls/P2TurnRow/P2TurnRight
+@onready var p2_forward: Button = $UI/P2Controls/P2DriveRow/P2Forward
+@onready var p2_reverse: Button = $UI/P2Controls/P2DriveRow/P2Reverse
+
+@onready var fire_p1_btn: Button = $UI/FireP1Button
+@onready var fire_p2_btn: Button = $UI/FireP2Button
 
 @onready var camera: Camera3D = $Camera3D
 
-var input_left := false
-var input_right := false
-var input_forward := false
-var input_reverse := false
+# Player 1 inputs (left side of screen)
+var p1_input_left := false
+var p1_input_right := false
+var p1_input_forward := false
+var p1_input_reverse := false
+
+# Player 2 inputs (right side of screen)
+var p2_input_left := false
+var p2_input_right := false
+var p2_input_forward := false
+var p2_input_reverse := false
 
 func _ready():
-	# Spawn player 1 tank on the left side (near hills for cover testing)
+	# Spawn both tanks in visible positions from the top-down view
 	tank1 = tank_scene.instantiate()
 	add_child(tank1)
-	tank1.position = Vector3(-18, 3.5, -8)
+	tank1.position = Vector3(-22, 3.2, -14)
 	
-	# Spawn a second tank on the right for visual reference (controls later)
 	tank2 = tank_scene.instantiate()
 	add_child(tank2)
-	tank2.position = Vector3(18, 3.5, 12)
-	# Give P2 tank a different color tint via material override (simple visual)
+	tank2.position = Vector3(22, 3.2, 16)
+	
+	# Tint P2 tank slightly different
 	var body = tank2.get_node_or_null("Body")
 	if body:
 		body.material_override = StandardMaterial3D.new()
 		body.material_override.albedo_color = Color(0.55, 0.38, 0.32, 1)
 	
 	# Defensive button wiring (platform can be flaky)
-	_connect_button(btn_turn_left, "left")
-	_connect_button(btn_turn_right, "right")
-	_connect_button(btn_forward, "forward")
-	_connect_button(btn_reverse, "reverse")
+	_connect_button(p1_turn_left, "p1_left")
+	_connect_button(p1_turn_right, "p1_right")
+	_connect_button(p1_forward, "p1_forward")
+	_connect_button(p1_reverse, "p1_reverse")
 	
-	if btn_fire:
-		btn_fire.button_down.connect(_on_fire_pressed)
-	else:
-		push_warning("Fire button not found in TankWar UI!")
+	_connect_button(p2_turn_left, "p2_left")
+	_connect_button(p2_turn_right, "p2_right")
+	_connect_button(p2_forward, "p2_forward")
+	_connect_button(p2_reverse, "p2_reverse")
 	
-	# Initial camera position: high angled overview showing canyon + hills + tank
+	if fire_p1_btn:
+		fire_p1_btn.button_down.connect(func(): _on_fire_pressed(1))
+	if fire_p2_btn:
+		fire_p2_btn.button_down.connect(func(): _on_fire_pressed(2))
+	
+	# Fixed top-down overview camera (like Pong) so both players always see the full arena
 	if camera:
-		_position_camera_for_tank()
+		_setup_topdown_camera()
 	
 	# Give the 3D world a bit of sky color so empty space isn't pure black
 	var we = $WorldEnvironment
@@ -66,75 +85,94 @@ func _connect_button(btn: Button, action: String):
 	if not btn:
 		push_warning("Missing button for action: " + action)
 		return
-	if action == "left":
-		btn.button_down.connect(func(): input_left = true)
-		btn.button_up.connect(func(): input_left = false)
-	elif action == "right":
-		btn.button_down.connect(func(): input_right = true)
-		btn.button_up.connect(func(): input_right = false)
-	elif action == "forward":
-		btn.button_down.connect(func(): input_forward = true)
-		btn.button_up.connect(func(): input_forward = false)
-	elif action == "reverse":
-		btn.button_down.connect(func(): input_reverse = true)
-		btn.button_up.connect(func(): input_reverse = false)
+	match action:
+		"p1_left":
+			btn.button_down.connect(func(): p1_input_left = true)
+			btn.button_up.connect(func(): p1_input_left = false)
+		"p1_right":
+			btn.button_down.connect(func(): p1_input_right = true)
+			btn.button_up.connect(func(): p1_input_right = false)
+		"p1_forward":
+			btn.button_down.connect(func(): p1_input_forward = true)
+			btn.button_up.connect(func(): p1_input_forward = false)
+		"p1_reverse":
+			btn.button_down.connect(func(): p1_input_reverse = true)
+			btn.button_up.connect(func(): p1_input_reverse = false)
+		"p2_left":
+			btn.button_down.connect(func(): p2_input_left = true)
+			btn.button_up.connect(func(): p2_input_left = false)
+		"p2_right":
+			btn.button_down.connect(func(): p2_input_right = true)
+			btn.button_up.connect(func(): p2_input_right = false)
+		"p2_forward":
+			btn.button_down.connect(func(): p2_input_forward = true)
+			btn.button_up.connect(func(): p2_input_forward = false)
+		"p2_reverse":
+			btn.button_down.connect(func(): p2_input_reverse = true)
+			btn.button_up.connect(func(): p2_input_reverse = false)
 
-func _on_fire_pressed():
-	if tank1 and tank1.has_method("shoot"):
+func _on_fire_pressed(player: int = 1):
+	if player == 1 and tank1 and tank1.has_method("shoot") and tank1.can_shoot():
 		tank1.shoot()
+	elif player == 2 and tank2 and tank2.has_method("shoot") and tank2.can_shoot():
+		tank2.shoot()
 
 func _physics_process(delta):
-	if not is_instance_valid(tank1):
+	_drive_tank(tank1, p1_input_left, p1_input_right, p1_input_forward, p1_input_reverse, delta)
+	_drive_tank(tank2, p2_input_left, p2_input_right, p2_input_forward, p2_input_reverse, delta)
+
+func _process(_delta):
+	_update_fire_button_state()
+
+func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev: bool, delta: float):
+	if not is_instance_valid(tank):
 		return
 		
 	var move_dir = 0.0
-	if input_forward:
+	if fwd:
 		move_dir = 1.0
-	elif input_reverse:
+	elif rev:
 		move_dir = -1.0
 	
 	var turn = 0.0
-	if input_left:
+	if left:
 		turn = 1.0
-	elif input_right:
+	elif right:
 		turn = -1.0
 	
-	# Arcade tank steering: move along local forward, turn in place or while moving
-	var forward_dir = -tank1.global_transform.basis.z
-	tank1.velocity = forward_dir * move_dir * 14.0
+	var forward_dir = -tank.global_transform.basis.z
+	tank.velocity = forward_dir * move_dir * 14.0
 	
 	if abs(turn) > 0.01:
-		tank1.rotate_y(turn * 2.2 * delta)
+		tank.rotate_y(turn * 2.2 * delta)
 	
-	tank1.move_and_slide()
-	
-	# Keep camera following the tank so the whole map stays in view as you drive
-	if camera:
-		_follow_camera(delta)
+	tank.move_and_slide()
 
-# High chase camera that stays behind/above the tank - makes driving obvious and shows terrain
-func _follow_camera(delta: float):
-	if not is_instance_valid(tank1) or not camera:
+# Fixed top-down camera positioned high above the center of the arena.
+# Gives both players complete overview at all times (Pong-style).
+func _setup_topdown_camera():
+	if not camera:
 		return
 	
-	# Desired offset: high and slightly behind the tank
-	var desired_offset = Vector3(0, 22, 26)
-	# Rotate offset to match tank facing
-	var rotated_offset = tank1.global_transform.basis * desired_offset
-	
-	var target_pos = tank1.global_position + rotated_offset
-	camera.global_position = camera.global_position.lerp(target_pos, 8.0 * delta)
-	
-	# Always look a bit ahead of the tank + down at ground level
-	var look_target = tank1.global_position + (-tank1.global_transform.basis.z * 8.0) + Vector3(0, 2, 0)
-	camera.look_at(look_target, Vector3.UP)
+	# High centered position looking straight down with a slight forward tilt
+	# so ramps and hills have some 3D readability.
+	camera.global_position = Vector3(0, 68, 12)
+	camera.rotation_degrees = Vector3(-72, 0, 0)   # strong top-down angle
+	camera.fov = 52.0
 
-# Fallback static overview (used at start)
-func _position_camera_for_tank():
-	if not camera or not is_instance_valid(tank1):
-		return
-	var offset = Vector3(0, 26, 30)
-	var rotated = tank1.global_transform.basis * offset
-	camera.global_position = tank1.global_position + rotated
-	var look_at_pos = tank1.global_position + (-tank1.global_transform.basis.z * 6.0)
-	camera.look_at(look_at_pos, Vector3.UP)
+func _update_fire_button_state():
+	var now = Time.get_ticks_msec() / 1000.0
+	
+	# P1 fire button
+	if fire_p1_btn and is_instance_valid(tank1):
+		var ready = tank1.can_shoot()
+		fire_p1_btn.disabled = not ready
+		fire_p1_btn.modulate = Color(1, 1, 1, 1) if ready else Color(0.6, 0.6, 0.6, 0.7)
+		fire_p1_btn.text = "P1 FIRE" if ready else "RELOAD"
+	
+	# P2 fire button
+	if fire_p2_btn and is_instance_valid(tank2):
+		var ready = tank2.can_shoot()
+		fire_p2_btn.disabled = not ready
+		fire_p2_btn.modulate = Color(1, 1, 1, 1) if ready else Color(0.6, 0.6, 0.6, 0.7)
+		fire_p2_btn.text = "P2 FIRE" if ready else "RELOAD"

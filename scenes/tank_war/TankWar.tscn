@@ -15,6 +15,9 @@ roughness = 0.9
 albedo_color = Color(0.45, 0.42, 0.38, 1)
 roughness = 0.85
 
+[sub_resource type="BoxShape3D" id="WorldFloorShape"]
+size = Vector3(300, 4, 300)
+
 [node name="TankWar" type="Node3D"]
 script = ExtResource("1")
 
@@ -28,6 +31,13 @@ shadow_enabled = true
 
 [node name="Level" type="CSGCombiner3D" parent="."]
 use_collision = true
+
+# Safety floor (large invisible collision plane so bullets never fall through the world)
+[node name="SafetyFloor" type="StaticBody3D" parent="Level"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Level/SafetyFloor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.2, 0)
+shape = SubResource("WorldFloorShape")
 
 # Ground base
 [node name="Ground" type="CSGBox3D" parent="Level"]
@@ -87,9 +97,9 @@ size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.5, -0.36, 0.79, 0, 0.91, 0.41, -0.866, -0.205, 0.455, 8, 48, 52)
+transform = Transform3D(1, 0, 0, 0, -0.2588, 0.9659, 0, -0.9659, -0.2588, 0, 72, 0)
 current = true
-fov = 58.0
+fov = 52.0
 
 [node name="UI" type="Control" parent="."]
 layout_mode = 3
@@ -104,16 +114,30 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -280
-offset_top = 18
-offset_right = 280
-offset_bottom = 52
-theme_override_font_sizes/font_size = 20
-text = "DRIVE: Left buttons = turn  •  Right buttons = forward/reverse   •   FIRE to shoot"
+offset_left = -340
+offset_top = 14
+offset_right = 340
+offset_bottom = 48
+theme_override_font_sizes/font_size = 18
+text = "P1 (left side)  •  P2 (right side)  •  Hold buttons to drive  •  FIRE has cooldown"
 horizontal_alignment = 1
-modulate = Color(0.95, 0.95, 1.0, 0.85)
+modulate = Color(0.95, 0.95, 1.0, 0.8)
 
-[node name="LeftPanel" type="ColorRect" parent="UI"]
+# ===================== P1 CONTROLS (left side) =====================
+[node name="P1Panel" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 12
+offset_top = -295
+offset_right = 295
+offset_bottom = -12
+color = Color(0.06, 0.07, 0.11, 0.78)
+
+[node name="P1Controls" type="VBoxContainer" parent="UI"]
 layout_mode = 1
 anchors_preset = 2
 anchor_left = 0.0
@@ -121,104 +145,184 @@ anchor_top = 1.0
 anchor_right = 0.0
 anchor_bottom = 1.0
 offset_left = 18
-offset_top = -272
-offset_right = 228
-offset_bottom = -16
-color = Color(0.08, 0.08, 0.1, 0.72)
-
-[node name="RightPanel" type="ColorRect" parent="UI"]
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -228
-offset_top = -272
-offset_right = -18
-offset_bottom = -16
-color = Color(0.08, 0.08, 0.1, 0.72)
-
-[node name="LeftControls" type="VBoxContainer" parent="UI"]
-layout_mode = 1
-anchors_preset = 2
-anchor_left = 0.0
-anchor_top = 1.0
-anchor_right = 0.0
-anchor_bottom = 1.0
-offset_left = 24
-offset_top = -260
-offset_right = 220
-offset_bottom = -24
+offset_top = -282
+offset_right = 288
+offset_bottom = -20
 grow_horizontal = 1
 grow_vertical = 0
-theme_override_constants/separation = 14
+theme_override_constants/separation = 8
 
-[node name="TurnLeft" type="Button" parent="UI/LeftControls"]
+[node name="P1Label" type="Label" parent="UI/P1Controls"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 82)
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 16
+text = "PLAYER 1"
+horizontal_alignment = 1
+modulate = Color(0.6, 0.85, 1.0, 0.9)
+
+[node name="P1TurnRow" type="HBoxContainer" parent="UI/P1Controls"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="P1TurnLeft" type="Button" parent="UI/P1Controls/P1TurnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
 text = "◀ LEFT"
 
-[node name="TurnRight" type="Button" parent="UI/LeftControls"]
+[node name="P1TurnRight" type="Button" parent="UI/P1Controls/P1TurnRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 82)
-theme_override_font_sizes/font_size = 30
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
 text = "RIGHT ▶"
 
-[node name="RightControls" type="VBoxContainer" parent="UI"]
+[node name="P1DriveRow" type="HBoxContainer" parent="UI/P1Controls"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="P1Forward" type="Button" parent="UI/P1Controls/P1DriveRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "▲ FWD"
+
+[node name="P1Reverse" type="Button" parent="UI/P1Controls/P1DriveRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "▼ REV"
+
+# ===================== P2 CONTROLS (right side) =====================
+[node name="P2Panel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -220
-offset_top = -260
-offset_right = -24
-offset_bottom = -24
+offset_left = -295
+offset_top = -295
+offset_right = -12
+offset_bottom = -12
+color = Color(0.11, 0.06, 0.06, 0.78)
+
+[node name="P2Controls" type="VBoxContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -288
+offset_top = -282
+offset_right = -18
+offset_bottom = -20
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_constants/separation = 14
+theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Forward" type="Button" parent="UI/RightControls"]
+[node name="P2Label" type="Label" parent="UI/P2Controls"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 82)
-theme_override_font_sizes/font_size = 30
-text = "▲ FORWARD"
+theme_override_font_sizes/font_size = 16
+text = "PLAYER 2"
+horizontal_alignment = 1
+modulate = Color(1.0, 0.75, 0.65, 0.9)
 
-[node name="Reverse" type="Button" parent="UI/RightControls"]
+[node name="P2TurnRow" type="HBoxContainer" parent="UI/P2Controls"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 82)
-theme_override_font_sizes/font_size = 30
-text = "▼ REVERSE"
+theme_override_constants/separation = 8
 
-[node name="FirePanel" type="ColorRect" parent="UI"]
+[node name="P2TurnLeft" type="Button" parent="UI/P2Controls/P2TurnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "◀ LEFT"
+
+[node name="P2TurnRight" type="Button" parent="UI/P2Controls/P2TurnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "RIGHT ▶"
+
+[node name="P2DriveRow" type="HBoxContainer" parent="UI/P2Controls"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="P2Forward" type="Button" parent="UI/P2Controls/P2DriveRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "▲ FWD"
+
+[node name="P2Reverse" type="Button" parent="UI/P2Controls/P2DriveRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 68)
+theme_override_font_sizes/font_size = 26
+text = "▼ REV"
+
+# ===================== TWO FIRE BUTTONS (center bottom) =====================
+[node name="FireP1Panel" type="ColorRect" parent="UI"]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -120
-offset_top = -142
-offset_right = 120
-offset_bottom = -16
-color = Color(0.55, 0.12, 0.12, 0.78)
+offset_left = -185
+offset_top = -118
+offset_right = -8
+offset_bottom = -14
+color = Color(0.15, 0.08, 0.35, 0.82)
 
-[node name="FireButton" type="Button" parent="UI"]
+[node name="FireP1Button" type="Button" parent="UI"]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -110
-offset_top = -130
-offset_right = 110
-offset_bottom = -24
+offset_left = -178
+offset_top = -108
+offset_right = -15
+offset_bottom = -22
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 36
-text = "FIRE"
+theme_override_font_sizes/font_size = 28
+text = "P1 FIRE"
+
+[node name="FireP2Panel" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 8
+offset_top = -118
+offset_right = 185
+offset_bottom = -14
+color = Color(0.35, 0.12, 0.08, 0.82)
+
+[node name="FireP2Button" type="Button" parent="UI"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 15
+offset_top = -108
+offset_right = 178
+offset_bottom = -22
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 28
+text = "P2 FIRE"
