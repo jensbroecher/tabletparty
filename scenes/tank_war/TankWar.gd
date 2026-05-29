@@ -161,8 +161,6 @@ func _setup_topdown_camera():
 	camera.fov = 52.0
 
 func _update_fire_button_state():
-	var now = Time.get_ticks_msec() / 1000.0
-	
 	# P1 fire button
 	if fire_p1_btn and is_instance_valid(tank1):
 		var ready = tank1.can_shoot()

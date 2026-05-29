@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://tankwar001"]
+[gd_scene load_steps=4 format=3 uid="uid://tankwar001"]
 
 [ext_resource type="Script" path="res://scenes/tank_war/TankWar.gd" id="1"]
 
