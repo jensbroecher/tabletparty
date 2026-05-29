@@ -58,13 +58,16 @@ func _ready():
 	if camera:
 		_setup_topdown_camera()
 	
+	# Tune shadows for top-down view (reduces jagged/pixelated look on large map)
+	_tune_topdown_shadows()
+	
 	# Give the 3D world a bit of sky color so empty space isn't pure black
 	var we = $WorldEnvironment
 	if we and we.environment:
 		we.environment.background_mode = Environment.BG_COLOR
-		we.environment.background_color = Color(0.18, 0.22, 0.28, 1)
-		we.environment.ambient_light_color = Color(0.65, 0.68, 0.75, 1)
-		we.environment.ambient_light_energy = 1.15
+		we.environment.background_color = Color(0.32, 0.35, 0.42, 1)
+		we.environment.ambient_light_color = Color(0.75, 0.78, 0.85, 1)
+		we.environment.ambient_light_energy = 1.8
 
 # Safe explicit wiring for Player 1 (left side)
 func _wire_p1_buttons():
@@ -175,3 +178,20 @@ func _update_fire_button_state():
 		fire_p2_btn.disabled = not ready
 		fire_p2_btn.modulate = Color(1, 1, 1, 1) if ready else Color(0.6, 0.6, 0.6, 0.7)
 		fire_p2_btn.text = "P2 FIRE" if ready else "RELOAD"
+
+# Improves shadow quality for the high top-down camera (reduces jagged/pixelated edges)
+func _tune_topdown_shadows():
+	var light = $DirectionalLight3D
+	if not light:
+		return
+	
+	light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	light.directional_shadow_split_1 = 0.08
+	light.directional_shadow_split_2 = 0.25
+	light.directional_shadow_split_3 = 0.6
+	
+	light.shadow_bias = 0.12
+	light.shadow_normal_bias = 3.0
+	light.shadow_opacity = 0.55          # Lower = softer / less obvious jaggies
+	light.shadow_blur = 3.0              # Higher blur helps hide aliasing on mobile
+	light.shadow_enabled = true

@@ -4,16 +4,16 @@
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
-ambient_light_color = Color(0.65, 0.68, 0.75, 1)
-ambient_light_energy = 1.15
+ambient_light_color = Color(0.75, 0.78, 0.85, 1)
+ambient_light_energy = 1.8
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
 albedo_color = Color(0.68, 0.62, 0.52, 1)
 roughness = 0.85
 
 [sub_resource type="StandardMaterial3D" id="WallMat"]
-albedo_color = Color(0.45, 0.42, 0.38, 1)
-roughness = 0.85
+albedo_color = Color(0.58, 0.55, 0.50, 1)
+roughness = 0.8
 
 [sub_resource type="BoxShape3D" id="WorldFloorShape"]
 size = Vector3(300, 4, 300)
@@ -25,9 +25,17 @@ script = ExtResource("1")
 environment = SubResource("Environment_1")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866025, -0.433013, 0.25, 0.5, 0.75, -0.433013, 0, 0.5, 0.866025, 0, 20, 0)
-light_energy = 2.0
+transform = Transform3D(0.707, -0.5, 0.5, 0, 0.707, 0.707, -0.707, -0.5, 0.5, 0, 85, 30)
+light_energy = 3.0
 shadow_enabled = true
+directional_shadow_mode = 2
+directional_shadow_split_1 = 0.08
+directional_shadow_split_2 = 0.25
+directional_shadow_split_3 = 0.6
+shadow_bias = 0.1
+shadow_normal_bias = 2.5
+shadow_opacity = 0.6
+shadow_blur = 2.5
 
 [node name="Level" type="CSGCombiner3D" parent="."]
 use_collision = true
