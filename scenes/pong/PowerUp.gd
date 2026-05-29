@@ -37,17 +37,17 @@ func _ready():
 func setup_type():
 	match type:
 		Type.SPEED_UP:
-			data = {"name": "FAST", "color": Color(1, 0.85, 0.2), "ball_speed_mult": 1.75, "icon": "res://assets/powerups/fast.jpg"}
+			data = {"name": "FAST", "color": Color(1, 0.85, 0.2), "ball_speed_mult": 1.75, "icon": "res://assets/powerups/fast.png"}
 		Type.SLOW_DOWN:
-			data = {"name": "SLOW", "color": Color(0.4, 0.7, 1.0), "ball_speed_mult": 0.5, "icon": "res://assets/powerups/slow.jpg"}
+			data = {"name": "SLOW", "color": Color(0.4, 0.7, 1.0), "ball_speed_mult": 0.5, "icon": "res://assets/powerups/slow.png"}
 		Type.REVERSE:
-			data = {"name": "REVERSE", "color": Color(0.85, 0.4, 0.95), "reverse": true, "icon": "res://assets/powerups/reverse.jpg"}
+			data = {"name": "REVERSE", "color": Color(0.85, 0.4, 0.95), "reverse": true, "icon": "res://assets/powerups/reverse.png"}
 		Type.ICE:
-			data = {"name": "ICE", "color": Color(0.5, 0.9, 1.0), "freeze_paddle": true, "freeze_duration": 2.8, "icon": "res://assets/powerups/ice.jpg"}
+			data = {"name": "ICE", "color": Color(0.5, 0.9, 1.0), "freeze_paddle": true, "freeze_duration": 2.8, "icon": "res://assets/powerups/ice.png"}
 		Type.BIG_PADDLE:
-			data = {"name": "BIG", "color": Color(0.3, 0.95, 0.5), "paddle_scale": 1.6, "duration": 6.0, "icon": "res://assets/powerups/big.jpg"}
+			data = {"name": "BIG", "color": Color(0.3, 0.95, 0.5), "paddle_scale": 1.6, "duration": 6.0, "icon": "res://assets/powerups/big.png"}
 		Type.SHRINK_PADDLE:
-			data = {"name": "SMALL", "color": Color(1.0, 0.6, 0.3), "paddle_scale": 0.55, "duration": 5.0, "icon": "res://assets/powerups/small.jpg"}
+			data = {"name": "SMALL", "color": Color(1.0, 0.6, 0.3), "paddle_scale": 0.55, "duration": 5.0, "icon": "res://assets/powerups/small.png"}
 	
 	if ring and data.has("color"):
 		ring.color = Color(data["color"].r * 0.6, data["color"].g * 0.6, data["color"].b * 0.6, 0.45)
