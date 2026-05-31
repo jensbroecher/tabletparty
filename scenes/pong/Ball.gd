@@ -75,8 +75,24 @@ func reset_ball():
 		angle += PI
 	velocity = Vector2.RIGHT.rotated(angle) * current_speed * speed_multiplier
 	
-	# Temporarily disabled for debugging script loading issues
-	# SoundManager.play_ball_launch()
+	# Materialize effect (fade in and scale up from center)
+	materialize()
+
+func materialize():
+	# Save velocity, stop moving, and animate fade-in/scale-up
+	var saved_velocity = velocity
+	velocity = Vector2.ZERO
+	modulate.a = 0.0
+	scale = Vector2.ZERO
+	
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "modulate:a", 1.0, 0.8)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_callback(func():
+		# Start movement after animation completes
+		velocity = saved_velocity
+	)
 
 func _physics_process(delta):
 	if is_icy:
@@ -131,26 +147,60 @@ func _physics_process(delta):
 			if not is_instance_valid(paddle):
 				continue
 			
-			var dx = position.x - paddle.position.x
 			var dy = position.y - paddle.position.y
-			
-			# Generous margins so the ball can't slip through the paddles
-			if abs(dx) < 25 and abs(dy) < 75:
-				var normal = Vector2.LEFT if dx < 0 else Vector2.RIGHT
-				velocity = velocity.bounce(normal)
-				velocity = velocity.normalized() * max(velocity.length() * 1.05, 380)
+			if abs(dy) < 80:
+				var is_collision = false
+				var push_x = 0.0
+				var normal = Vector2.ZERO
 				
-				if p.has_method("_on_ball_hit_paddle"):
-					p._on_ball_hit_paddle(paddle.player_index)
+				# Get viewport size for correct screen division/bounds
+				var screen_w = get_viewport_rect().size.x
 				
-				if SoundManager:
-					SoundManager.play_paddle_hit()
+				if paddle.player_index == 0: # Left paddle
+					if position.x < paddle.position.x + 25 and position.x > 50 and position.x < screen_w / 2:
+						is_collision = true
+						push_x = paddle.position.x + 25
+						normal = Vector2.RIGHT
+				else: # Right paddle
+					if position.x > paddle.position.x - 25 and position.x < screen_w - 50 and position.x > screen_w / 2:
+						is_collision = true
+						push_x = paddle.position.x - 25
+						normal = Vector2.LEFT
 				
-				if is_icy and paddle.has_method("freeze"):
-					paddle.freeze(2.6)
-				
-				position += normal * 18
-				break
+				if is_collision:
+					position.x = push_x
+					velocity = velocity.bounce(normal)
+					
+					# Ensure velocity is pointing in the correct normal direction
+					if normal == Vector2.RIGHT:
+						velocity.x = abs(velocity.x)
+					else:
+						velocity.x = -abs(velocity.x)
+					
+					# EXTRA VELOCITY BOOST!
+					# Check if the paddle is moving forward rapidly when impacted.
+					var extra_boost = 0.0
+					if paddle.has_method("get_forward_speed"):
+						var fwd_speed = paddle.get_forward_speed()
+						if fwd_speed > 150.0:  # Threshold for "rapidly moving"
+							extra_boost = clamp(fwd_speed * 0.45, 50.0, 350.0) # boost between 50 and 350
+							# Also add a nice visual/audio feedback for a smash!
+							if SoundManager:
+								# Play high pitched hit
+								SoundManager._play_tone(1100, 0.15, 0.8)
+					
+					velocity = velocity.normalized() * max(velocity.length() * 1.05 + extra_boost, 380)
+					
+					if p.has_method("_on_ball_hit_paddle"):
+						p._on_ball_hit_paddle(paddle.player_index)
+					
+					if SoundManager and extra_boost == 0.0:
+						SoundManager.play_paddle_hit()
+					
+					if is_icy and paddle.has_method("freeze"):
+						paddle.freeze(2.6)
+					
+					break
 
 	# === MANUAL BUMPER + ITEM DETECTION ===
 	# After runtime script forcing, normal collisions and Area signals are unreliable.
@@ -170,6 +220,13 @@ func _physics_process(delta):
 				get_parent().add_child(particles)
 
 				apply_powerup(pu)
+				
+				# Trigger audio manually due to platform workaround bypassing Area signals
+				if SoundManager:
+					SoundManager.play_powerup_collected(pu.type)
+				if VoiceAnnouncer:
+					VoiceAnnouncer.play_powerup(pu.type)
+					
 				pu.queue_free()
 				break
 

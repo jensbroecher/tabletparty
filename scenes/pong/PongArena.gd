@@ -22,8 +22,10 @@ var last_hit_player: int = -1   # 0 = left, 1 = right
 
 var powerup_timer: Timer
 var screen_size: Vector2
+var game_over: bool = false
 
 func _ready():
+	game_over = false
 	screen_size = get_viewport_rect().size
 	
 	GameManager.ensure_two_players()
@@ -47,7 +49,7 @@ func _ready():
 	
 	# Small delay before launching the ball.
 	# This helps on Android + certain Godot versions where the physics server needs a moment to settle.
-	var launch_timer = get_tree().create_timer(0.1)
+	var launch_timer = get_tree().create_timer(1.8)
 	launch_timer.timeout.connect(func():
 		if not is_instance_valid(ball):
 			return
@@ -236,9 +238,16 @@ func update_score_ui():
 
 # Called by Goal.gd when ball enters a goal
 func goal_scored(player_index: int):
+	if game_over:
+		return
 	# player_index who owns the goal = the one who SCORED (opponent lost the point)
 	GameManager.add_score(player_index)
 	update_score_ui()
+	
+	# Check for victory condition (first to 10 points wins)
+	if player_index < GameManager.players.size() and GameManager.players[player_index]["score"] >= 10:
+		show_victory_screen(player_index)
+		return
 	
 	SoundManager.play_goal_scored(player_index)
 	
@@ -282,6 +291,102 @@ func goal_scored(player_index: int):
 		else:
 			push_error("Ball is still missing reset_ball method during respawn.")
 	)
+
+func show_victory_screen(winner_idx: int):
+	game_over = true
+	# Stop ball and spawner
+	if ball.has_method("stop_ball"):
+		ball.stop_ball()
+	if powerup_timer:
+		powerup_timer.stop()
+	
+	# Reset paddles
+	if left_paddle: left_paddle.reset_paddle()
+	if right_paddle: right_paddle.reset_paddle()
+	
+	# Clear any remaining powerups
+	for pu in get_tree().get_nodes_in_group("powerups"):
+		pu.queue_free()
+	
+	# Audio feedback
+	if SoundManager:
+		SoundManager.play_victory()
+	if VoiceAnnouncer:
+		VoiceAnnouncer.play("player_%d_wins" % (winner_idx + 1))
+	
+	var p = GameManager.players
+	var winner_name = p[winner_idx]["name"] if winner_idx < p.size() else "Player %d" % (winner_idx + 1)
+	var winner_color = p[winner_idx]["color"] if winner_idx < p.size() else Color.WHITE
+	
+	# Create overlay
+	var overlay = ColorRect.new()
+	overlay.name = "VictoryOverlay"
+	overlay.color = Color(0.06, 0.05, 0.08, 0.9)
+	overlay.size = screen_size
+	overlay.z_index = 200
+	$UI.add_child(overlay)
+	
+	var vbox = VBoxContainer.new()
+	overlay.add_child(vbox)
+	vbox.size = Vector2(500, 350)
+	vbox.set_anchors_preset(Control.PRESET_CENTER)
+	vbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	vbox.grow_vertical = Control.GROW_DIRECTION_BOTH
+	vbox.add_theme_constant_override("separation", 25)
+	
+	# Winner announcement label
+	var win_label = Label.new()
+	win_label.text = "%s WINS!" % winner_name.to_upper()
+	win_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	win_label.add_theme_font_size_override("font_size", 48)
+	win_label.add_theme_color_override("font_color", winner_color)
+	win_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	win_label.add_theme_constant_override("outline_size", 8)
+	vbox.add_child(win_label)
+	
+	# Final score label
+	var score_text = Label.new()
+	score_text.text = "Final Score\n%s: %d  -  %s: %d" % [
+		p[0]["name"] if p.size() > 0 else "P1", p[0]["score"] if p.size() > 0 else 0,
+		p[1]["name"] if p.size() > 1 else "P2", p[1]["score"] if p.size() > 1 else 0
+	]
+	score_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_text.add_theme_font_size_override("font_size", 24)
+	score_text.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	vbox.add_child(score_text)
+	
+	# Spacer
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 15)
+	vbox.add_child(spacer)
+	
+	# Play Again button
+	var play_again_btn = Button.new()
+	play_again_btn.text = "PLAY AGAIN"
+	play_again_btn.add_theme_font_size_override("font_size", 28)
+	play_again_btn.pressed.connect(_on_play_again_pressed)
+	vbox.add_child(play_again_btn)
+	
+	# Main Menu button
+	var menu_btn = Button.new()
+	menu_btn.text = "MAIN MENU"
+	menu_btn.add_theme_font_size_override("font_size", 28)
+	menu_btn.pressed.connect(_on_main_menu_pressed)
+	vbox.add_child(menu_btn)
+
+func _on_play_again_pressed():
+	# Reset scores
+	for i in range(GameManager.players.size()):
+		GameManager.players[i]["score"] = 0
+	# Reload current scene
+	get_tree().reload_current_scene()
+
+func _on_main_menu_pressed():
+	# Reset scores
+	for i in range(GameManager.players.size()):
+		GameManager.players[i]["score"] = 0
+	# Go back to ModeSelection screen
+	get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
 
 # === PLATFORM WORKAROUNDS ===
 # See Ball.gd for explanation of why we have manual collision systems.

@@ -61,6 +61,10 @@ func play_freeze():
 func play_ball_launch():
 	_play_tone(580, 0.04, 0.35)
 
+func play_victory():
+	# Triumphant major arpeggio
+	_play_tone_sequence([523.25, 659.25, 783.99, 1046.5], [0.12, 0.12, 0.12, 0.35], 0.75)
+
 # ==================== INTERNAL SYNTHESIS ====================
 
 func _play_tone(frequency: float, duration: float, volume: float, noise_amount := 0.0):

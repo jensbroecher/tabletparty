@@ -7,6 +7,9 @@ var frozen: bool = false
 var freeze_time: float = 0.0
 var original_scale: Vector2 = Vector2.ONE
 var last_touch_y: float = 0.0
+var initial_x: float = 0.0
+var current_velocity: Vector2 = Vector2.ZERO
+var last_position: Vector2 = Vector2.ZERO
 
 @export var speed: float = 620.0
 @export var paddle_height: float = 120.0
@@ -17,6 +20,8 @@ var last_touch_y: float = 0.0
 func setup(index: int, color: Color):
 	player_index = index
 	paddle_color = color
+	initial_x = position.x
+	last_position = position
 	
 	if visual and visual.texture:
 		var tex_size = visual.texture.get_size()
@@ -25,6 +30,11 @@ func setup(index: int, color: Color):
 	visual.modulate = color
 	original_scale = scale
 	last_touch_y = get_viewport_rect().size.y / 2.0
+
+func _physics_process(delta):
+	if delta > 0:
+		current_velocity = (position - last_position) / delta
+	last_position = position
 
 func _process(delta):
 	if frozen:
@@ -48,9 +58,25 @@ func _input(event):
 			touch_index = -1
 	
 	if event is InputEventScreenDrag and event.index == touch_index and not frozen:
-		# Vertical paddles only (classic left/right)
+		# Allow movement both vertically and horizontally (forward/back)
 		last_touch_y = event.position.y
 		position.y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
+		
+		# Move forward or back
+		var new_x = event.position.x
+		if player_index == 0:
+			# Left player: default is 70, allow moving between 40 and 260
+			position.x = clamp(new_x, 40, 260)
+		else:
+			# Right player: default is screen_size.x - 70, allow moving between screen - 260 and screen - 40
+			var screen_w = get_viewport_rect().size.x
+			position.x = clamp(new_x, screen_w - 260, screen_w - 40)
+
+func get_forward_speed() -> float:
+	if player_index == 0:
+		return max(0.0, current_velocity.x)
+	else:
+		return max(0.0, -current_velocity.x)
 
 func freeze(duration: float):
 	frozen = true
@@ -80,6 +106,7 @@ func reset_paddle():
 	unfreeze()
 	scale = original_scale
 	collision.scale = Vector2.ONE
+	position.x = initial_x
 	# Snap to where the user's finger currently is (or last was) instead of center
 	# This prevents the ugly "jump from center" on respawn
 	position.y = clamp(last_touch_y, 80, get_viewport_rect().size.y - 80)
