@@ -5,6 +5,9 @@ signal tank_destroyed(tank_node)
 @export var max_health: int = 3
 var current_health: int = 3
 
+var enemy_tank: CharacterBody3D = null
+var turret_node: Node3D = null
+
 @export var speed: float = 12.0
 @export var turn_speed: float = 1.8
 @export var fire_cooldown: float = 0.55   # seconds between shots
@@ -64,6 +67,11 @@ func _ready():
 				var node = get_node_or_null(child)
 				if node:
 					node.visible = false
+					
+			# Search for turret node part_7 recursively inside the model
+			turret_node = _find_node_by_name(model, "part_7")
+			if turret_node:
+				print("Found turret node part_7 for: ", name)
 
 func _get_combined_aabb(node: Node) -> AABB:
 	var aabb = AABB()
@@ -199,6 +207,45 @@ func shoot():
 		bullet.add_collision_exception_with(self)
 	
 	_last_fire_time = Time.get_ticks_msec() / 1000.0
+
+func _process(delta):
+	_aim_turret(delta)
+
+func _aim_turret(delta: float):
+	if not is_instance_valid(turret_node) or not is_instance_valid(enemy_tank):
+		return
+		
+	var dir_to_enemy = (enemy_tank.global_position - global_position).normalized()
+	dir_to_enemy.y = 0.0
+	dir_to_enemy = dir_to_enemy.normalized()
+	
+	# Get target angle in local space
+	var local_dir = global_transform.basis.inverse() * dir_to_enemy
+	var target_local_y = atan2(-local_dir.x, -local_dir.z)
+	
+	# Smoothly rotate turret (part_7) toward target angle
+	# Lerping angle prevents snappy/instant rotation and rotates naturally
+	turret_node.rotation.y = lerp_angle(turret_node.rotation.y, target_local_y, 1.8 * delta)
+	
+	# Update shoot point position and rotation to follow the turret's barrel tip
+	if shoot_point:
+		# Use X axis of the turret node basis because the FBX model is offset by 90 degrees
+		var turret_forward = turret_node.global_transform.basis.x.normalized()
+		# Offset 4.2 units forward from turret pivot, keeping it flat at barrel height
+		var target_pos = turret_node.global_position + turret_forward * 4.2
+		target_pos.y = global_position.y + 1.6
+		shoot_point.global_position = target_pos
+		# Align shoot_point rotation so its Z-axis points in the direction of the barrel
+		shoot_point.look_at(target_pos + turret_forward, Vector3.UP)
+
+func _find_node_by_name(node: Node, target_name: String) -> Node:
+	if node.name == target_name:
+		return node
+	for child in node.get_children():
+		var result = _find_node_by_name(child, target_name)
+		if result:
+			return result
+	return null
 
 func take_damage(amount: int):
 	if current_health <= 0:

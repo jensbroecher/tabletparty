@@ -53,6 +53,12 @@ func _ready():
 	if tank2.has_signal("tank_destroyed"):
 		tank2.tank_destroyed.connect(_on_tank2_destroyed)
 		
+	# Wire enemy references for turret aiming
+	if "enemy_tank" in tank1:
+		tank1.enemy_tank = tank2
+	if "enemy_tank" in tank2:
+		tank2.enemy_tank = tank1
+		
 	# Dynamic Score counter setup
 	var ui = get_node_or_null("UI")
 	if ui:
@@ -243,8 +249,10 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 	
 	tank.velocity = Vector3(target_vel.x, vertical_velocity, target_vel.z)
 	
-	if abs(turn) > 0.01:
-		tank.rotate_y(turn * 2.2 * delta)
+	if abs(turn) > 0.01 and abs(move_dir) > 0.01:
+		# Reverse steering behaves in opposite direction
+		var turn_multiplier = 1.0 if move_dir > 0.0 else -1.0
+		tank.rotate_y(turn * turn_multiplier * 2.2 * delta)
 	
 	tank.move_and_slide()
 
