@@ -11,7 +11,7 @@ roughness = 0.85
 albedo_color = Color(0.28, 0.3, 0.26, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
-size = Vector3(3.2, 1.8, 5.8)
+size = Vector3(3.2, 2.2, 5.8)
 
 [node name="Tank" type="CharacterBody3D"]
 script = ExtResource("1")
@@ -41,6 +41,7 @@ height = 3.5
 material = SubResource("TurretMat")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 shape = SubResource("BoxShape3D_1")
 
 [node name="ShootPoint" type="Node3D" parent="."]

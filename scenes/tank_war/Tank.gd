@@ -182,9 +182,13 @@ func shoot():
 		fire_dir = fire_dir.normalized()
 	
 	# Spawn closer to the tank, shifting back along the barrel
-	var spawn_pos = shoot_point.global_position - fire_dir * 1.6
+	var spawn_pos = shoot_point.global_position - fire_dir * 2.0
 	bullet.global_position = spawn_pos
 	bullet.global_rotation = global_rotation
+	
+	# Set shooter property to prevent self-collision in detector area
+	if "shooter" in bullet:
+		bullet.shooter = self
 	
 	# Fire the bullet
 	if bullet.has_method("fire"):
