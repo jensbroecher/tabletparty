@@ -263,4 +263,88 @@ func explode_and_destroy():
 		get_tree().current_scene.add_child(expl)
 		expl.global_position = global_position
 		expl.scale = Vector3.ONE * 2.5
+		
+	# Trigger physical model shattering
+	var model = get_node_or_null("TankModel")
+	if model:
+		_spawn_debris(model)
+		
 	queue_free()
+
+func _spawn_debris(model_node: Node):
+	var meshes = []
+	_collect_meshes(model_node, meshes)
+	print("Shattering tank: collected ", meshes.size(), " meshes for debris.")
+	
+	for mesh_inst in meshes:
+		var parent_body = RigidBody3D.new()
+		parent_body.collision_layer = 0 # No collision with gameplay elements
+		parent_body.collision_mask = 1  # Only collide with the world ground/walls
+		
+		# Set mass and physical friction override
+		parent_body.mass = 1.5
+		var pm = PhysicsMaterial.new()
+		pm.bounce = 0.25
+		pm.rough = true
+		parent_body.physics_material_override = pm
+		
+		# CRITICAL: Do NOT scale RigidBody3D in Godot. Keep scale at Vector3.ONE.
+		# Apply position and rotation from mesh global transform, but normalize the basis to strip scale.
+		var global_scale = mesh_inst.global_transform.basis.get_scale()
+		var unscaled_basis = mesh_inst.global_transform.basis.orthonormalized()
+		var unscaled_transform = Transform3D(unscaled_basis, mesh_inst.global_transform.origin)
+		parent_body.global_transform = unscaled_transform
+		
+		# Copy MeshInstance3D geometry and overrides, applying scale to the child MeshInstance3D
+		var new_mesh_inst = MeshInstance3D.new()
+		new_mesh_inst.mesh = mesh_inst.mesh
+		new_mesh_inst.scale = global_scale
+		
+		# Copy active materials (including runtime player color overrides)
+		var material_count = mesh_inst.get_surface_override_material_count()
+		if material_count == 0 and mesh_inst.mesh:
+			material_count = mesh_inst.mesh.get_surface_count()
+			
+		for i in range(material_count):
+			var mat = mesh_inst.get_active_material(i)
+			if mat:
+				new_mesh_inst.set_surface_override_material(i, mat)
+				
+		if mesh_inst.material_override:
+			new_mesh_inst.material_override = mesh_inst.material_override
+			
+		parent_body.add_child(new_mesh_inst)
+		
+		# Create collision shape based on mesh AABB, scaled
+		var aabb = mesh_inst.mesh.get_aabb()
+		var box_shape = BoxShape3D.new()
+		box_shape.size = aabb.size * global_scale
+		
+		var shape_node = CollisionShape3D.new()
+		shape_node.shape = box_shape
+		shape_node.position = aabb.get_center() * global_scale
+		parent_body.add_child(shape_node)
+		
+		# Add to the world scene tree
+		get_tree().current_scene.add_child(parent_body)
+		
+		# Apply physical blast impulses
+		var name_lower = mesh_inst.name.to_lower()
+		if "part_7" in name_lower or name_lower == "turret":
+			# Pop the turret high up and tumble
+			var impulse = Vector3(randf_range(-7.5, 7.5), randf_range(20.0, 26.0), randf_range(-7.5, 7.5))
+			var torque = Vector3(randf_range(-14.0, 14.0), randf_range(-14.0, 14.0), randf_range(-14.0, 14.0))
+			parent_body.apply_central_impulse(impulse)
+			parent_body.apply_torque_impulse(torque)
+		else:
+			# Blast chassis parts outwards
+			var impulse = Vector3(randf_range(-5.0, 5.0), randf_range(4.5, 9.5), randf_range(-5.0, 5.0))
+			var torque = Vector3(randf_range(-6.0, 6.0), randf_range(-6.0, 6.0), randf_range(-6.0, 6.0))
+			parent_body.apply_central_impulse(impulse)
+			parent_body.apply_torque_impulse(torque)
+
+func _collect_meshes(node: Node, list: Array):
+	if node is MeshInstance3D and node.mesh:
+		list.append(node)
+	for child in node.get_children():
+		_collect_meshes(child, list)
