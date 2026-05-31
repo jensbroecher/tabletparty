@@ -471,3 +471,7 @@ func _physics_process(delta):
 	
 	# Note: Paddle collision logic lives in Ball.gd due to platform-specific issues
 	# (see comments at the top of Ball.gd).
+
+func _input(event):
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_on_main_menu_pressed()

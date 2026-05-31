@@ -75,6 +75,7 @@ func play_powerup(powerup_type) -> void:
 		3: play("ice")            # ICE
 		4: play("big_paddle")     # BIG_PADDLE
 		5: play("small_paddle")   # SHRINK_PADDLE
+		6: play("barrier")        # BARRIER
 		_:
 			print("VoiceAnnouncer: Unknown powerup type: ", powerup_type)
 

@@ -19,6 +19,7 @@ const POWERUP_COLLECT_PARTICLES = preload("res://scenes/pong/effects/PowerUpColl
 @export var speed_increment: float = 18.0
 @export var min_speed: float = 320.0
 @export var friction: float = 40.0
+@export var max_velocity_magnitude: float = 1200.0
 
 var current_speed: float
 var speed_multiplier: float = 1.0
@@ -107,6 +108,10 @@ func _physics_process(delta):
 		if ice_timer <= 0:
 			is_icy = false
 			update_visual()
+
+	# Apply max velocity clamp
+	if velocity.length() > max_velocity_magnitude:
+		velocity = velocity.normalized() * max_velocity_magnitude
 
 	var collision = move_and_collide(velocity * delta)
 	if collision:

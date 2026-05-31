@@ -11,6 +11,9 @@ extends Node3D
 var tank1: CharacterBody3D
 var tank2: CharacterBody3D
 
+var score_label: Label
+var round_restarting := false
+
 # Actual button paths from TankWar.tscn (2-player split layout)
 @onready var fire_p1_btn: Button = $UI/FireP1Button
 @onready var fire_p2_btn: Button = $UI/FireP2Button
@@ -31,6 +34,7 @@ var p2_input_reverse := false
 
 func _ready():
 	GameManager.ensure_two_players()
+	round_restarting = false
 	
 	# Spawn both tanks in visible positions from the top-down view
 	tank1 = tank_scene.instantiate()
@@ -38,12 +42,33 @@ func _ready():
 	tank1.position = Vector3(-22, 3.2, -14)
 	if tank1.has_method("set_tank_color") and GameManager.players.size() > 0:
 		tank1.set_tank_color(GameManager.players[0]["color"])
+	if tank1.has_signal("tank_destroyed"):
+		tank1.tank_destroyed.connect(_on_tank1_destroyed)
 	
 	tank2 = tank_scene.instantiate()
 	add_child(tank2)
 	tank2.position = Vector3(22, 3.2, 16)
 	if tank2.has_method("set_tank_color") and GameManager.players.size() > 1:
 		tank2.set_tank_color(GameManager.players[1]["color"])
+	if tank2.has_signal("tank_destroyed"):
+		tank2.tank_destroyed.connect(_on_tank2_destroyed)
+		
+	# Dynamic Score counter setup
+	var ui = get_node_or_null("UI")
+	if ui:
+		score_label = Label.new()
+		score_label.name = "ScoreLabel"
+		score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		score_label.add_theme_font_size_override("font_size", 28)
+		score_label.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
+		score_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		score_label.add_theme_constant_override("outline_size", 8)
+		score_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		score_label.offset_top = 45.0
+		score_label.offset_bottom = 85.0
+		ui.add_child(score_label)
+		
+	update_score_ui()
 	
 	# Robust button wiring — fetch nodes fresh every time (avoids @onready flakiness)
 	_wire_p1_buttons()
@@ -122,11 +147,72 @@ func _on_fire_pressed(player: int = 1):
 		tank2.shoot()
 
 func _physics_process(delta):
-	_drive_tank(tank1, p1_input_left, p1_input_right, p1_input_forward, p1_input_reverse, delta)
-	_drive_tank(tank2, p2_input_left, p2_input_right, p2_input_forward, p2_input_reverse, delta)
+	# Combine touch button inputs and physical keyboard inputs
+	var p1_l = p1_input_left or Input.is_key_pressed(KEY_A)
+	var p1_r = p1_input_right or Input.is_key_pressed(KEY_D)
+	var p1_f = p1_input_forward or Input.is_key_pressed(KEY_W)
+	var p1_rev = p1_input_reverse or Input.is_key_pressed(KEY_S)
+	
+	var p2_l = p2_input_left or Input.is_key_pressed(KEY_LEFT)
+	var p2_r = p2_input_right or Input.is_key_pressed(KEY_RIGHT)
+	var p2_f = p2_input_forward or Input.is_key_pressed(KEY_UP)
+	var p2_rev = p2_input_reverse or Input.is_key_pressed(KEY_DOWN)
 
-func _process(_delta):
+	if is_instance_valid(tank1):
+		_drive_tank(tank1, p1_l, p1_r, p1_f, p1_rev, delta)
+	if is_instance_valid(tank2):
+		_drive_tank(tank2, p2_l, p2_r, p2_f, p2_rev, delta)
+
+func _process(delta):
 	_update_fire_button_state()
+	_update_dynamic_camera(delta)
+	
+	# Keyboard fire trigger (P1 Spacebar, P2 Enter)
+	if Input.is_key_pressed(KEY_SPACE):
+		_on_fire_pressed(1)
+	if Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER):
+		_on_fire_pressed(2)
+
+# Dynamic camera that centers on tanks and zooms in/out based on distance
+func _update_dynamic_camera(delta: float):
+	if not camera:
+		return
+	
+	var t1_valid = is_instance_valid(tank1)
+	var t2_valid = is_instance_valid(tank2)
+	
+	var target_center: Vector3
+	var target_height: float
+	
+	if t1_valid and t2_valid:
+		var p1 = tank1.global_position
+		var p2 = tank2.global_position
+		target_center = (p1 + p2) / 2.0
+		var distance = p1.distance_to(p2)
+		
+		# Map distance to camera height
+		# Minimum height is 42.0 to prevent zooming in too close
+		# Maximum height is 85.0 to keep tanks in view when far apart
+		var t = clamp((distance - 10.0) / 50.0, 0.0, 1.0)
+		target_height = lerp(42.0, 85.0, t)
+	elif t1_valid:
+		target_center = tank1.global_position
+		target_height = 48.0
+	elif t2_valid:
+		target_center = tank2.global_position
+		target_height = 48.0
+	else:
+		target_center = Vector3.ZERO
+		target_height = 68.0
+	
+	# Calculate Z-offset to keep the tilt angle looking at the center
+	# Original setup had camera at (0, 68, 12) looking at center (0, 0, 0)
+	var z_offset = target_height * (12.0 / 68.0)
+	var target_pos = Vector3(target_center.x, target_height, target_center.z + z_offset)
+	
+	# Smoothly interpolate camera position to target position
+	camera.global_position = camera.global_position.lerp(target_pos, 4.0 * delta)
+
 
 func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev: bool, delta: float):
 	if not is_instance_valid(tank):
@@ -145,7 +231,17 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 		turn = -1.0
 	
 	var forward_dir = -tank.global_transform.basis.z
-	tank.velocity = forward_dir * move_dir * 14.0
+	var target_vel = forward_dir * move_dir * 14.0
+	
+	# Apply gravity to vertical component
+	var vertical_velocity = tank.velocity.y
+	if not tank.is_on_floor():
+		vertical_velocity -= 30.0 * delta
+	else:
+		# Small downward force to keep the tank snapped to ramps/slopes
+		vertical_velocity = -1.0
+	
+	tank.velocity = Vector3(target_vel.x, vertical_velocity, target_vel.z)
 	
 	if abs(turn) > 0.01:
 		tank.rotate_y(turn * 2.2 * delta)
@@ -195,3 +291,38 @@ func _tune_topdown_shadows():
 	light.shadow_opacity = 0.55          # Lower = softer / less obvious jaggies
 	light.shadow_blur = 3.0              # Higher blur helps hide aliasing on mobile
 	light.shadow_enabled = true
+
+func _input(event):
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		for i in range(GameManager.players.size()):
+			GameManager.players[i]["score"] = 0
+		get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+
+func update_score_ui():
+	if not score_label:
+		return
+	var p = GameManager.players
+	var text = "%s: %d    |    %s: %d" % [
+		p[0]["name"] if p.size() > 0 else "P1", p[0]["score"] if p.size() > 0 else 0,
+		p[1]["name"] if p.size() > 1 else "P2", p[1]["score"] if p.size() > 1 else 0
+	]
+	score_label.text = text
+
+func _on_tank_destroyed(player_id_who_died: int):
+	if round_restarting:
+		return
+	round_restarting = true
+	
+	# The OTHER player gets the score
+	var winner_id = 1 if player_id_who_died == 0 else 0
+	GameManager.add_score(winner_id)
+	update_score_ui()
+	
+	var timer = get_tree().create_timer(2.2)
+	timer.timeout.connect(get_tree().reload_current_scene)
+
+func _on_tank1_destroyed(_node):
+	_on_tank_destroyed(0)
+
+func _on_tank2_destroyed(_node):
+	_on_tank_destroyed(1)

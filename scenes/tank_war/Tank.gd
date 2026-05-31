@@ -1,5 +1,10 @@
 extends CharacterBody3D
 
+signal tank_destroyed(tank_node)
+
+@export var max_health: int = 3
+var current_health: int = 3
+
 @export var speed: float = 12.0
 @export var turn_speed: float = 1.8
 @export var fire_cooldown: float = 0.55   # seconds between shots
@@ -14,6 +19,8 @@ var bullet_scene = preload("res://scenes/tank_war/Bullet.tscn")
 var _last_fire_time: float = -999.0
 
 func _ready():
+	add_to_group("tank")
+	current_health = max_health
 	var model_path = "res://assets/tankbattle/20260531053401_ca2d076e.fbx"
 	if ResourceLoader.exists(model_path):
 		var model_scene = load(model_path)
@@ -174,8 +181,8 @@ func shoot():
 		fire_dir.y = 0.0
 		fire_dir = fire_dir.normalized()
 	
-	# Spawn slightly in front of the shoot point
-	var spawn_pos = shoot_point.global_position + fire_dir * 1.3
+	# Spawn closer to the tank, shifting back along the barrel
+	var spawn_pos = shoot_point.global_position - fire_dir * 1.6
 	bullet.global_position = spawn_pos
 	bullet.global_rotation = global_rotation
 	
@@ -188,3 +195,21 @@ func shoot():
 		bullet.add_collision_exception_with(self)
 	
 	_last_fire_time = Time.get_ticks_msec() / 1000.0
+
+func take_damage(amount: int):
+	if current_health <= 0:
+		return
+	current_health -= amount
+	if current_health <= 0:
+		explode_and_destroy()
+
+func explode_and_destroy():
+	emit_signal("tank_destroyed", self)
+	# Trigger a big explosion
+	var explosion_scene = preload("res://scenes/tank_war/Explosion.tscn")
+	if explosion_scene:
+		var expl = explosion_scene.instantiate()
+		get_tree().current_scene.add_child(expl)
+		expl.global_position = global_position
+		expl.scale = Vector3.ONE * 2.5
+	queue_free()

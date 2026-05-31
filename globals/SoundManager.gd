@@ -130,3 +130,26 @@ func _play_cold_ice_sound(duration := 0.38):
 		var s: float = sin(t * 180.0) * 0.4 * env + noise   # low cold tone + noise
 
 		playback.push_frame(Vector2(s, s))
+
+func play_explosion():
+	_play_explosion_sound()
+
+func _play_explosion_sound(duration := 0.45):
+	_ensure_playback()
+	if not playback:
+		return
+
+	var samples := int(duration * SAMPLE_RATE)
+
+	for i in range(samples):
+		var t: float = float(i) / samples
+		var env: float = 1.0 - pow(t, 0.5)   # sharp rise, organic decay
+		# White/red noise for the explosion blast
+		var noise: float = (randf() * 2.0 - 1.0) * env * 0.9
+		# Mix in a very low rumbling sine wave that sweeps downwards
+		var freq: float = lerp(140.0, 35.0, t)
+		var phase: float = t * freq * TAU
+		var rumble: float = sin(phase) * env * 0.7
+		
+		var s: float = clamp(rumble + noise, -1.0, 1.0) * 0.65
+		playback.push_frame(Vector2(s, s))

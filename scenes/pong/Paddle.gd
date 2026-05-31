@@ -35,6 +35,40 @@ func setup(index: int, color: Color):
 
 func _physics_process(delta):
 	if not frozen:
+		# Keyboard movement handling
+		var keyboard_dir = Vector2.ZERO
+		if player_index == 0:
+			if Input.is_key_pressed(KEY_W):
+				keyboard_dir.y -= 1.0
+			if Input.is_key_pressed(KEY_S):
+				keyboard_dir.y += 1.0
+			if Input.is_key_pressed(KEY_A):
+				keyboard_dir.x -= 1.0
+			if Input.is_key_pressed(KEY_D):
+				keyboard_dir.x += 1.0
+		elif player_index == 1:
+			if Input.is_key_pressed(KEY_UP):
+				keyboard_dir.y -= 1.0
+			if Input.is_key_pressed(KEY_DOWN):
+				keyboard_dir.y += 1.0
+			if Input.is_key_pressed(KEY_LEFT):
+				keyboard_dir.x -= 1.0
+			if Input.is_key_pressed(KEY_RIGHT):
+				keyboard_dir.x += 1.0
+				
+		if keyboard_dir.length() > 0.01:
+			target_position += keyboard_dir * 1100.0 * delta
+			var screen_w = get_viewport_rect().size.x
+			var screen_h = get_viewport_rect().size.y
+			var target_y = clamp(target_position.y, 80, screen_h - 80)
+			var target_x = target_position.x
+			if player_index == 0:
+				target_x = clamp(target_x, 40, 260)
+			else:
+				target_x = clamp(target_x, screen_w - 260, screen_w - 40)
+			target_position = Vector2(target_x, target_y)
+			last_touch_y = target_y
+
 		# Smoothly move towards target_position with max speed
 		var diff = target_position - position
 		if diff.length() > 0.01:

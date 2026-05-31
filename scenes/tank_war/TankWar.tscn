@@ -10,36 +10,35 @@ ambient_light_energy = 1.8
 [sub_resource type="BoxShape3D" id="WorldFloorShape"]
 size = Vector3(300, 4, 300)
 
+[sub_resource type="FastNoiseLite" id="GroundAlbedoNoise"]
+noise_type = 3
+frequency = 0.02
+
+[sub_resource type="NoiseTexture2D" id="GroundAlbedoTex"]
+noise = SubResource("GroundAlbedoNoise")
+seamless = true
+
 [sub_resource type="FastNoiseLite" id="GroundNoise"]
 noise_type = 2
 frequency = 0.05
 fractal_octaves = 4
 
 [sub_resource type="NoiseTexture2D" id="GroundNoiseTex"]
+noise = SubResource("GroundNoise")
 seamless = true
 as_normal_map = true
 bump_strength = 3.0
-noise = SubResource("GroundNoise")
-
-[sub_resource type="FastNoiseLite" id="GroundAlbedoNoise"]
-noise_type = 3
-frequency = 0.02
-
-[sub_resource type="NoiseTexture2D" id="GroundAlbedoTex"]
-seamless = true
-noise = SubResource("GroundAlbedoNoise")
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
-albedo_color = Color(0.55, 0.49, 0.40, 1)
+albedo_color = Color(0.18, 0.16, 0.15, 1)
 albedo_texture = SubResource("GroundAlbedoTex")
+roughness = 0.9
 normal_enabled = true
 normal_texture = SubResource("GroundNoiseTex")
-uv1_scale = Vector3(25, 25, 25)
-roughness = 0.90
-
+uv1_scale = Vector3(4, 4, 4)
 
 [sub_resource type="StandardMaterial3D" id="WallMat"]
-albedo_color = Color(0.58, 0.55, 0.5, 1)
+albedo_color = Color(0.24, 0.23, 0.22, 1)
 roughness = 0.8
 
 [node name="TankWar" type="Node3D" unique_id=1816564121]
@@ -114,7 +113,7 @@ size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
 [node name="RampRight" type="CSGBox3D" parent="Level" unique_id=876342566]
-transform = Transform3D(0.866, -0.5, 0, 0.5, 0.866, 0, 0, 0, 1, 22, 1, 45)
+transform = Transform3D(0.866, -0.5, 0, 0.5, 0.866, 0, 0, 0, 1, 22, 1, 9.111855)
 size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
