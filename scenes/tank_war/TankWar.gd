@@ -7,6 +7,8 @@ extends Node3D
 # NOTE: Button wiring uses explicit get_node_or_null (more reliable on Android/Termux)
 
 @export var tank_scene: PackedScene = preload("res://scenes/tank_war/Tank.tscn")
+@export var p1_spawn: Marker3D
+@export var p2_spawn: Marker3D
 
 var tank1: CharacterBody3D
 var tank2: CharacterBody3D
@@ -39,7 +41,11 @@ func _ready():
 	# Spawn both tanks in visible positions from the top-down view
 	tank1 = tank_scene.instantiate()
 	add_child(tank1)
-	tank1.position = Vector3(-22, 3.2, -14)
+	var p1_marker = get_node_or_null("P1Spawn")
+	if p1_marker:
+		tank1.global_transform = p1_marker.global_transform
+	else:
+		tank1.position = Vector3(-22, 3.2, -14)
 	if tank1.has_method("set_tank_color") and GameManager.players.size() > 0:
 		tank1.set_tank_color(GameManager.players[0]["color"])
 	if tank1.has_signal("tank_destroyed"):
@@ -47,7 +53,11 @@ func _ready():
 	
 	tank2 = tank_scene.instantiate()
 	add_child(tank2)
-	tank2.position = Vector3(22, 3.2, 16)
+	var p2_marker = get_node_or_null("P2Spawn")
+	if p2_marker:
+		tank2.global_transform = p2_marker.global_transform
+	else:
+		tank2.position = Vector3(22, 3.2, 16)
 	if tank2.has_method("set_tank_color") and GameManager.players.size() > 1:
 		tank2.set_tank_color(GameManager.players[1]["color"])
 	if tank2.has_signal("tank_destroyed"):
@@ -247,11 +257,22 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 		# Small downward force to keep the tank snapped to ramps/slopes
 		vertical_velocity = -1.0
 	
-	tank.velocity = Vector3(target_vel.x, vertical_velocity, target_vel.z)
+	# Smoothly interpolate horizontal velocity for gradual acceleration and deceleration
+	var current_horizontal_vel = Vector3(tank.velocity.x, 0.0, tank.velocity.z)
+	var target_horizontal_vel = Vector3(target_vel.x, 0.0, target_vel.z)
 	
-	if abs(turn) > 0.01 and abs(move_dir) > 0.01:
-		# Reverse steering behaves in opposite direction
-		var turn_multiplier = 1.0 if move_dir > 0.0 else -1.0
+	# Accelerate rate is 18.0 units/s, Decelerate (stopping friction) is 12.0 units/s
+	var accel_rate = 18.0 if move_dir != 0.0 else 12.0
+	var new_horizontal_vel = current_horizontal_vel.move_toward(target_horizontal_vel, accel_rate * delta)
+	
+	tank.velocity = Vector3(new_horizontal_vel.x, vertical_velocity, new_horizontal_vel.z)
+	
+	# Allow steering if the tank is actually moving (horizontal speed > 0.5)
+	var current_speed = new_horizontal_vel.length()
+	if abs(turn) > 0.01 and current_speed > 0.5:
+		# Project velocity on forward vector to detect forward vs reverse movement
+		var speed_forward = new_horizontal_vel.dot(forward_dir)
+		var turn_multiplier = 1.0 if speed_forward >= 0.0 else -1.0
 		tank.rotate_y(turn * turn_multiplier * 2.2 * delta)
 	
 	tank.move_and_slide()
@@ -301,10 +322,38 @@ func _tune_topdown_shadows():
 	light.shadow_enabled = true
 
 func _input(event):
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		for i in range(GameManager.players.size()):
-			GameManager.players[i]["score"] = 0
-		get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			for i in range(GameManager.players.size()):
+				GameManager.players[i]["score"] = 0
+			get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+		else:
+			# Hide controls for the player who pressed the keyboard
+			match event.keycode:
+				KEY_W, KEY_A, KEY_S, KEY_D, KEY_SPACE:
+					_set_p1_controls_visible(false)
+				KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER:
+					_set_p2_controls_visible(false)
+					
+	elif event is InputEventScreenTouch and event.pressed:
+		# Show controls again when touch is detected on that player's side
+		var half = get_viewport().get_visible_rect().size.x / 2
+		if event.position.x < half:
+			_set_p1_controls_visible(true)
+		else:
+			_set_p2_controls_visible(true)
+
+func _set_p1_controls_visible(is_visible: bool):
+	for path in ["UI/P1Controls", "UI/P1Panel", "UI/FireP1Panel", "UI/FireP1Button"]:
+		var node = get_node_or_null(path)
+		if node:
+			node.visible = is_visible
+
+func _set_p2_controls_visible(is_visible: bool):
+	for path in ["UI/P2Controls", "UI/P2Panel", "UI/FireP2Panel", "UI/FireP2Button"]:
+		var node = get_node_or_null(path)
+		if node:
+			node.visible = is_visible
 
 func update_score_ui():
 	if not score_label:

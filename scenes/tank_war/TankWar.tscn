@@ -44,6 +44,12 @@ roughness = 0.8
 [node name="TankWar" type="Node3D" unique_id=1816564121]
 script = ExtResource("1")
 
+[node name="P1Spawn" type="Marker3D" parent="." unique_id=1093493368]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.131348, 3.2, -14)
+
+[node name="P2Spawn" type="Marker3D" parent="." unique_id=446909745]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -65.65341, 3.2, 16)
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1981143760]
 environment = SubResource("Environment_1")
 
