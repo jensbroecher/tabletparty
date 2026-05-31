@@ -67,11 +67,6 @@ func _ready():
 		
 		if ball.has_method("reset_ball"):
 			ball.reset_ball()
-			
-			if ball.velocity.length() < 50:
-				var dir = Vector2.RIGHT.rotated(randf_range(-0.5, 0.5))
-				ball.velocity = dir * 420.0
-			
 			ball.queue_redraw()
 			
 			# Voice announcement
