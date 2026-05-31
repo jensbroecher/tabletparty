@@ -1,107 +1,129 @@
-[gd_scene load_steps=4 format=3 uid="uid://tankwar001"]
+[gd_scene format=3 uid="uid://tankwar001"]
 
-[ext_resource type="Script" path="res://scenes/tank_war/TankWar.gd" id="1"]
+[ext_resource type="Script" uid="uid://da7u1t4inh0yc" path="res://scenes/tank_war/TankWar.gd" id="1"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
 ambient_light_color = Color(0.75, 0.78, 0.85, 1)
 ambient_light_energy = 1.8
 
-[sub_resource type="StandardMaterial3D" id="GroundMat"]
-albedo_color = Color(0.68, 0.62, 0.52, 1)
-roughness = 0.85
-
-[sub_resource type="StandardMaterial3D" id="WallMat"]
-albedo_color = Color(0.58, 0.55, 0.50, 1)
-roughness = 0.8
-
 [sub_resource type="BoxShape3D" id="WorldFloorShape"]
 size = Vector3(300, 4, 300)
 
-[node name="TankWar" type="Node3D"]
+[sub_resource type="FastNoiseLite" id="GroundNoise"]
+noise_type = 2
+frequency = 0.05
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="GroundNoiseTex"]
+seamless = true
+as_normal_map = true
+bump_strength = 3.0
+noise = SubResource("GroundNoise")
+
+[sub_resource type="FastNoiseLite" id="GroundAlbedoNoise"]
+noise_type = 3
+frequency = 0.02
+
+[sub_resource type="NoiseTexture2D" id="GroundAlbedoTex"]
+seamless = true
+noise = SubResource("GroundAlbedoNoise")
+
+[sub_resource type="StandardMaterial3D" id="GroundMat"]
+albedo_color = Color(0.55, 0.49, 0.40, 1)
+albedo_texture = SubResource("GroundAlbedoTex")
+normal_enabled = true
+normal_texture = SubResource("GroundNoiseTex")
+uv1_scale = Vector3(25, 25, 25)
+roughness = 0.90
+
+
+[sub_resource type="StandardMaterial3D" id="WallMat"]
+albedo_color = Color(0.58, 0.55, 0.5, 1)
+roughness = 0.8
+
+[node name="TankWar" type="Node3D" unique_id=1816564121]
 script = ExtResource("1")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1981143760]
 environment = SubResource("Environment_1")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1067072501]
 transform = Transform3D(0.707, -0.5, 0.5, 0, 0.707, 0.707, -0.707, -0.5, 0.5, 0, 85, 30)
 light_energy = 3.0
 shadow_enabled = true
-directional_shadow_mode = 2
-directional_shadow_split_1 = 0.08
-directional_shadow_split_2 = 0.25
-directional_shadow_split_3 = 0.6
-shadow_bias = 0.1
 shadow_normal_bias = 2.5
 shadow_opacity = 0.6
 shadow_blur = 2.5
+directional_shadow_split_1 = 0.08
+directional_shadow_split_2 = 0.25
+directional_shadow_split_3 = 0.6
 
-[node name="Level" type="CSGCombiner3D" parent="."]
+[node name="Level" type="CSGCombiner3D" parent="." unique_id=1171977981]
 use_collision = true
 
-[node name="SafetyFloor" type="StaticBody3D" parent="Level"]
+[node name="SafetyFloor" type="StaticBody3D" parent="Level" unique_id=107150051]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Level/SafetyFloor"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Level/SafetyFloor" unique_id=1082275145]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.2, 0)
 shape = SubResource("WorldFloorShape")
 
-[node name="Ground" type="CSGBox3D" parent="Level"]
+[node name="Ground" type="CSGBox3D" parent="Level" unique_id=1013796209]
 size = Vector3(160, 4, 160)
 material = SubResource("GroundMat")
 
-[node name="CanyonFloor" type="CSGBox3D" parent="Level"]
+[node name="CanyonFloor" type="CSGBox3D" parent="Level" unique_id=1730498343]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
-size = Vector3(120, 4, 35)
 operation = 2
+size = Vector3(120, 4, 35)
 material = SubResource("GroundMat")
 
-[node name="LeftCanyonWall" type="CSGBox3D" parent="Level"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 6, 0)
+[node name="LeftCanyonWall" type="CSGBox3D" parent="Level" unique_id=1795664015]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -75.1187, 6, 0)
 size = Vector3(8, 16, 120)
 material = SubResource("WallMat")
 
-[node name="RightCanyonWall" type="CSGBox3D" parent="Level"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 6, 0)
+[node name="RightCanyonWall" type="CSGBox3D" parent="Level" unique_id=464492737]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.776184, 6, 0)
 size = Vector3(8, 16, 120)
 material = SubResource("WallMat")
 
-[node name="HillLeft1" type="CSGBox3D" parent="Level"]
+[node name="HillLeft1" type="CSGBox3D" parent="Level" unique_id=813455398]
 transform = Transform3D(0.96, 0, 0.28, 0, 1, 0, -0.28, 0, 0.96, -38, 3, -25)
 size = Vector3(35, 12, 28)
 material = SubResource("GroundMat")
 
-[node name="HillLeft2" type="CSGBox3D" parent="Level"]
-transform = Transform3D(0.8, 0, -0.6, 0, 1, 0, 0.6, 0, 0.8, -42, 4, 18)
+[node name="HillLeft2" type="CSGBox3D" parent="Level" unique_id=2055301569]
+transform = Transform3D(0.8, 0, -0.6, 0, 1, 0, 0.6, 0, 0.8, -42, 4, -38.212685)
 size = Vector3(30, 14, 25)
 material = SubResource("GroundMat")
 
-[node name="HillRight1" type="CSGBox3D" parent="Level"]
-transform = Transform3D(0.9, 0, 0.435, 0, 1, 0, -0.435, 0, 0.9, 40, 3.5, -22)
+[node name="HillRight1" type="CSGBox3D" parent="Level" unique_id=2135165998]
+transform = Transform3D(0.9, 0, 0.435, 0, 1, 0, -0.435, 0, 0.9, 40, 3.5, -48.28292)
 size = Vector3(32, 13, 26)
 material = SubResource("GroundMat")
 
-[node name="HillRight2" type="CSGBox3D" parent="Level"]
-transform = Transform3D(0.75, 0, -0.66, 0, 1, 0, 0.66, 0, 0.75, 38, 5, 25)
+[node name="HillRight2" type="CSGBox3D" parent="Level" unique_id=240027131]
+transform = Transform3D(0.75, 0, -0.66, 0, 1, 0, 0.66, 0, 0.75, 38, 5, 56.485245)
 size = Vector3(28, 15, 30)
 material = SubResource("GroundMat")
 
-[node name="RampLeft" type="CSGBox3D" parent="Level"]
+[node name="RampLeft" type="CSGBox3D" parent="Level" unique_id=1553575951]
 transform = Transform3D(0.866, 0.5, 0, -0.5, 0.866, 0, 0, 0, 1, -22, 1, -45)
 size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
-[node name="RampRight" type="CSGBox3D" parent="Level"]
+[node name="RampRight" type="CSGBox3D" parent="Level" unique_id=876342566]
 transform = Transform3D(0.866, -0.5, 0, 0.5, 0.866, 0, 0, 0, 1, 22, 1, 45)
 size = Vector3(18, 3, 22)
 material = SubResource("GroundMat")
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=508328887]
 transform = Transform3D(1, 0, 0, 0, -0.2588, 0.9659, 0, -0.9659, -0.2588, 0, 72, 0)
 current = true
 fov = 52.0
 
-[node name="UI" type="Control" parent="."]
+[node name="UI" type="Control" parent="." unique_id=729055286]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -109,216 +131,219 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HintLabel" type="Label" parent="UI"]
+[node name="HintLabel" type="Label" parent="UI" unique_id=1506994469]
+modulate = Color(0.95, 0.95, 1, 0.8)
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -340
-offset_top = 14
-offset_right = 340
-offset_bottom = 48
+offset_left = -340.0
+offset_top = 14.0
+offset_right = 340.0
+offset_bottom = 48.0
+grow_horizontal = 2
 theme_override_font_sizes/font_size = 18
 text = "P1 (left side)  •  P2 (right side)  •  Hold buttons to drive  •  FIRE has cooldown"
 horizontal_alignment = 1
-modulate = Color(0.95, 0.95, 1.0, 0.8)
 
-[node name="P1Panel" type="ColorRect" parent="UI"]
+[node name="P1Panel" type="ColorRect" parent="UI" unique_id=397750273]
 layout_mode = 1
 anchors_preset = 2
-anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
-offset_left = 12
-offset_top = -295
-offset_right = 295
-offset_bottom = -12
+offset_left = 12.0
+offset_top = -295.0
+offset_right = 295.0
+offset_bottom = -12.0
+grow_vertical = 0
 color = Color(0.06, 0.07, 0.11, 0.78)
 
-[node name="P1Controls" type="VBoxContainer" parent="UI"]
+[node name="P1Controls" type="VBoxContainer" parent="UI" unique_id=1607506484]
 layout_mode = 1
 anchors_preset = 2
-anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
-offset_left = 18
-offset_top = -282
-offset_right = 288
-offset_bottom = -20
-grow_horizontal = 1
+offset_left = 18.0
+offset_top = -282.0
+offset_right = 288.0
+offset_bottom = -20.0
 grow_vertical = 0
 theme_override_constants/separation = 8
 
-[node name="P1Label" type="Label" parent="UI/P1Controls"]
+[node name="P1Label" type="Label" parent="UI/P1Controls" unique_id=1113966950]
+modulate = Color(0.6, 0.85, 1, 0.9)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "PLAYER 1"
 horizontal_alignment = 1
-modulate = Color(0.6, 0.85, 1.0, 0.9)
 
-[node name="P1TurnRow" type="HBoxContainer" parent="UI/P1Controls"]
+[node name="P1TurnRow" type="HBoxContainer" parent="UI/P1Controls" unique_id=1915762545]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="P1TurnLeft" type="Button" parent="UI/P1Controls/P1TurnRow"]
+[node name="P1TurnLeft" type="Button" parent="UI/P1Controls/P1TurnRow" unique_id=1302490637]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "◀ LEFT"
 
-[node name="P1TurnRight" type="Button" parent="UI/P1Controls/P1TurnRow"]
+[node name="P1TurnRight" type="Button" parent="UI/P1Controls/P1TurnRow" unique_id=1605183728]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "RIGHT ▶"
 
-[node name="P1DriveRow" type="HBoxContainer" parent="UI/P1Controls"]
+[node name="P1DriveRow" type="HBoxContainer" parent="UI/P1Controls" unique_id=201936086]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="P1Forward" type="Button" parent="UI/P1Controls/P1DriveRow"]
+[node name="P1Forward" type="Button" parent="UI/P1Controls/P1DriveRow" unique_id=944653931]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▲ FWD"
 
-[node name="P1Reverse" type="Button" parent="UI/P1Controls/P1DriveRow"]
+[node name="P1Reverse" type="Button" parent="UI/P1Controls/P1DriveRow" unique_id=1484289458]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▼ REV"
 
-[node name="P2Panel" type="ColorRect" parent="UI"]
+[node name="P2Panel" type="ColorRect" parent="UI" unique_id=1195968335]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -295
-offset_top = -295
-offset_right = -12
-offset_bottom = -12
+offset_left = -295.0
+offset_top = -295.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
 color = Color(0.11, 0.06, 0.06, 0.78)
 
-[node name="P2Controls" type="VBoxContainer" parent="UI"]
+[node name="P2Controls" type="VBoxContainer" parent="UI" unique_id=67483799]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -288
-offset_top = -282
-offset_right = -18
-offset_bottom = -20
+offset_left = -288.0
+offset_top = -282.0
+offset_right = -18.0
+offset_bottom = -20.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="P2Label" type="Label" parent="UI/P2Controls"]
+[node name="P2Label" type="Label" parent="UI/P2Controls" unique_id=587446962]
+modulate = Color(1, 0.75, 0.65, 0.9)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "PLAYER 2"
 horizontal_alignment = 1
-modulate = Color(1.0, 0.75, 0.65, 0.9)
 
-[node name="P2TurnRow" type="HBoxContainer" parent="UI/P2Controls"]
+[node name="P2TurnRow" type="HBoxContainer" parent="UI/P2Controls" unique_id=925726487]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="P2TurnLeft" type="Button" parent="UI/P2Controls/P2TurnRow"]
+[node name="P2TurnLeft" type="Button" parent="UI/P2Controls/P2TurnRow" unique_id=1606987969]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "◀ LEFT"
 
-[node name="P2TurnRight" type="Button" parent="UI/P2Controls/P2TurnRow"]
+[node name="P2TurnRight" type="Button" parent="UI/P2Controls/P2TurnRow" unique_id=685621657]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "RIGHT ▶"
 
-[node name="P2DriveRow" type="HBoxContainer" parent="UI/P2Controls"]
+[node name="P2DriveRow" type="HBoxContainer" parent="UI/P2Controls" unique_id=1656685168]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="P2Forward" type="Button" parent="UI/P2Controls/P2DriveRow"]
+[node name="P2Forward" type="Button" parent="UI/P2Controls/P2DriveRow" unique_id=1814335528]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▲ FWD"
 
-[node name="P2Reverse" type="Button" parent="UI/P2Controls/P2DriveRow"]
+[node name="P2Reverse" type="Button" parent="UI/P2Controls/P2DriveRow" unique_id=596116276]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 68)
 theme_override_font_sizes/font_size = 26
 text = "▼ REV"
 
-[node name="FireP1Panel" type="ColorRect" parent="UI"]
+[node name="FireP1Panel" type="ColorRect" parent="UI" unique_id=1372651264]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -185
-offset_top = -118
-offset_right = -8
-offset_bottom = -14
+offset_left = -185.0
+offset_top = -118.0
+offset_right = -8.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
 color = Color(0.15, 0.08, 0.35, 0.82)
 
-[node name="FireP1Button" type="Button" parent="UI"]
+[node name="FireP1Button" type="Button" parent="UI" unique_id=1969350663]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -178
-offset_top = -108
-offset_right = -15
-offset_bottom = -22
+offset_left = -178.0
+offset_top = -108.0
+offset_right = -15.0
+offset_bottom = -22.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 28
 text = "P1 FIRE"
 
-[node name="FireP2Panel" type="ColorRect" parent="UI"]
+[node name="FireP2Panel" type="ColorRect" parent="UI" unique_id=1273446992]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = 8
-offset_top = -118
-offset_right = 185
-offset_bottom = -14
+offset_left = 8.0
+offset_top = -118.0
+offset_right = 185.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
 color = Color(0.35, 0.12, 0.08, 0.82)
 
-[node name="FireP2Button" type="Button" parent="UI"]
+[node name="FireP2Button" type="Button" parent="UI" unique_id=1831172244]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = 15
-offset_top = -108
-offset_right = 178
-offset_bottom = -22
+offset_left = 15.0
+offset_top = -108.0
+offset_right = 178.0
+offset_bottom = -22.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 28

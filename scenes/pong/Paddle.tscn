@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scenes/pong/Paddle.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/pong/padel.png" id="2_texture"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(20, 120)
@@ -10,11 +11,9 @@ collision_layer = 8
 collision_mask = 2
 script = ExtResource("1_script")
 
-[node name="ColorRect" type="ColorRect" parent="."]
-offset_left = -10.0
-offset_top = -60.0
-offset_right = 10.0
-offset_bottom = 60.0
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_texture")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")
+

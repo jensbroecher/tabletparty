@@ -30,20 +30,20 @@ var p2_input_forward := false
 var p2_input_reverse := false
 
 func _ready():
+	GameManager.ensure_two_players()
+	
 	# Spawn both tanks in visible positions from the top-down view
 	tank1 = tank_scene.instantiate()
 	add_child(tank1)
 	tank1.position = Vector3(-22, 3.2, -14)
+	if tank1.has_method("set_tank_color") and GameManager.players.size() > 0:
+		tank1.set_tank_color(GameManager.players[0]["color"])
 	
 	tank2 = tank_scene.instantiate()
 	add_child(tank2)
 	tank2.position = Vector3(22, 3.2, 16)
-	
-	# Tint P2 tank slightly different
-	var body = tank2.get_node_or_null("Body")
-	if body:
-		body.material_override = StandardMaterial3D.new()
-		body.material_override.albedo_color = Color(0.55, 0.38, 0.32, 1)
+	if tank2.has_method("set_tank_color") and GameManager.players.size() > 1:
+		tank2.set_tank_color(GameManager.players[1]["color"])
 	
 	# Robust button wiring — fetch nodes fresh every time (avoids @onready flakiness)
 	_wire_p1_buttons()

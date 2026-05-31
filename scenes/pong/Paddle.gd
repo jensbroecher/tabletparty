@@ -11,13 +11,18 @@ var last_touch_y: float = 0.0
 @export var speed: float = 620.0
 @export var paddle_height: float = 120.0
 
-@onready var visual: ColorRect = $ColorRect
+@onready var visual: Sprite2D = $Sprite2D
 @onready var collision: CollisionShape2D = $CollisionShape2D
 
 func setup(index: int, color: Color):
 	player_index = index
 	paddle_color = color
-	visual.color = color
+	
+	if visual and visual.texture:
+		var tex_size = visual.texture.get_size()
+		visual.scale = Vector2(20.0 / tex_size.x, 120.0 / tex_size.y)
+		
+	visual.modulate = color
 	original_scale = scale
 	last_touch_y = get_viewport_rect().size.y / 2.0
 
@@ -50,14 +55,14 @@ func _input(event):
 func freeze(duration: float):
 	frozen = true
 	freeze_time = duration
-	visual.color = Color(0.5, 0.85, 1.0)  # Ice blue
+	visual.modulate = Color(0.5, 0.85, 1.0)  # Ice blue
 	modulate = Color(0.7, 0.85, 1.0, 0.85)
 	SoundManager.play_freeze()
 
 func unfreeze():
 	frozen = false
 	freeze_time = 0.0
-	visual.color = paddle_color
+	visual.modulate = paddle_color
 	modulate = Color.WHITE
 
 func set_temporary_scale(s: float, duration: float):
@@ -78,4 +83,5 @@ func reset_paddle():
 	# Snap to where the user's finger currently is (or last was) instead of center
 	# This prevents the ugly "jump from center" on respawn
 	position.y = clamp(last_touch_y, 80, get_viewport_rect().size.y - 80)
+
 
