@@ -6,7 +6,8 @@ enum Type {
 	REVERSE,
 	ICE,
 	BIG_PADDLE,
-	SHRINK_PADDLE
+	SHRINK_PADDLE,
+	BARRIER
 }
 
 @export var type: Type = Type.SPEED_UP
@@ -37,25 +38,28 @@ func _ready():
 func setup_type():
 	match type:
 		Type.SPEED_UP:
-			data = {"name": "FAST", "color": Color(1, 0.85, 0.2), "ball_speed_mult": 1.75, "icon": "res://assets/powerups/fast.png"}
+			data = {"name": "FAST", "color": Color(1, 0.85, 0.2), "ball_speed_mult": 1.75, "icon": "res://assets/powerups/fast.jpg"}
 		Type.SLOW_DOWN:
-			data = {"name": "SLOW", "color": Color(0.4, 0.7, 1.0), "ball_speed_mult": 0.5, "icon": "res://assets/powerups/slow.png"}
+			data = {"name": "SLOW", "color": Color(0.4, 0.7, 1.0), "ball_speed_mult": 0.5, "icon": "res://assets/powerups/slow.jpg"}
 		Type.REVERSE:
-			data = {"name": "REVERSE", "color": Color(0.85, 0.4, 0.95), "reverse": true, "icon": "res://assets/powerups/reverse.png"}
+			data = {"name": "REVERSE", "color": Color(0.85, 0.4, 0.95), "reverse": true, "icon": "res://assets/powerups/reverse.jpg"}
 		Type.ICE:
-			data = {"name": "ICE", "color": Color(0.5, 0.9, 1.0), "freeze_paddle": true, "freeze_duration": 2.8, "icon": "res://assets/powerups/ice.png"}
+			data = {"name": "ICE", "color": Color(0.5, 0.9, 1.0), "freeze_paddle": true, "freeze_duration": 2.8, "icon": "res://assets/powerups/ice.jpg"}
 		Type.BIG_PADDLE:
-			data = {"name": "BIG", "color": Color(0.3, 0.95, 0.5), "paddle_scale": 1.6, "duration": 6.0, "icon": "res://assets/powerups/big.png"}
+			data = {"name": "BIG", "color": Color(0.3, 0.95, 0.5), "paddle_scale": 1.6, "duration": 6.0, "icon": "res://assets/powerups/big.jpg"}
 		Type.SHRINK_PADDLE:
-			data = {"name": "SMALL", "color": Color(1.0, 0.6, 0.3), "paddle_scale": 0.55, "duration": 5.0, "icon": "res://assets/powerups/small.png"}
+			data = {"name": "SMALL", "color": Color(1.0, 0.6, 0.3), "paddle_scale": 0.55, "duration": 5.0, "icon": "res://assets/powerups/small.jpg"}
+		Type.BARRIER:
+			data = {"name": "BARRIER", "color": Color(0.2, 0.9, 0.9), "icon": "res://assets/powerups/shield.png"}
 	
 	if ring and data.has("color"):
 		ring.color = Color(data["color"].r * 0.6, data["color"].g * 0.6, data["color"].b * 0.6, 0.45)
 	
 	if icon and data.has("icon"):
-		var tex = load(data["icon"])
-		if tex:
-			icon.texture = tex
+		if ResourceLoader.exists(data["icon"]):
+			var tex = load(data["icon"])
+			if tex:
+				icon.texture = tex
 
 func get_effect() -> Dictionary:
 	return data

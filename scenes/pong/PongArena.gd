@@ -190,13 +190,34 @@ func spawn_random_powerup():
 	var pu = POWERUP_SCENE.instantiate()
 	pu.add_to_group("powerups")
 	
-	# Safe random position in the middle play area
+	# Safe random position in the middle play area (away from bumpers)
 	var margin_x = 220
 	var margin_y = 90
-	pu.position = Vector2(
-		randf_range(margin_x, screen_size.x - margin_x),
-		randf_range(margin_y, screen_size.y - margin_y)
-	)
+	var bumpers = get_tree().get_nodes_in_group("bumpers")
+	
+	var pos = Vector2.ZERO
+	var valid_pos = false
+	var attempts = 0
+	
+	while not valid_pos and attempts < 20:
+		attempts += 1
+		pos = Vector2(
+			randf_range(margin_x, screen_size.x - margin_x),
+			randf_range(margin_y, screen_size.y - margin_y)
+		)
+		
+		# Check distance to all bumpers
+		var too_close = false
+		for b in bumpers:
+			if is_instance_valid(b):
+				if pos.distance_to(b.position) < 65.0: # 65 pixels safety margin
+					too_close = true
+					break
+		
+		if not too_close:
+			valid_pos = true
+	
+	pu.position = pos
 	
 	# Pick random type (weighted a bit toward the fun ones)
 	var types = [
@@ -205,7 +226,8 @@ func spawn_random_powerup():
 		pu.Type.REVERSE, pu.Type.REVERSE,
 		pu.Type.ICE,
 		pu.Type.BIG_PADDLE,
-		pu.Type.SHRINK_PADDLE
+		pu.Type.SHRINK_PADDLE,
+		pu.Type.BARRIER, pu.Type.BARRIER
 	]
 	pu.type = types.pick_random()
 	
@@ -222,6 +244,41 @@ func apply_paddle_powerup(effect: Dictionary):
 	
 	if effect.has("paddle_scale"):
 		paddle.set_temporary_scale(effect.paddle_scale, effect.get("duration", 5.0))
+
+func spawn_barrier(player_idx: int):
+	# Remove any existing barrier for this player first
+	var existing = get_node_or_null("Barrier_P%d" % player_idx)
+	if existing:
+		existing.queue_free()
+	
+	var barrier = ColorRect.new()
+	barrier.name = "Barrier_P%d" % player_idx
+	barrier.add_to_group("barriers")
+	
+	# Position behind the paddle. Left paddle is at x = ~70. Right paddle is at x = ~screen_size.x - 70.
+	# We place the barrier at x = 35 (Left) and screen_size.x - 35 (Right)
+	var x_pos = 35.0 if player_idx == 0 else screen_size.x - 35.0
+	barrier.size = Vector2(16, screen_size.y - 48) # spanning vertical area between top and bottom walls
+	barrier.position = Vector2(x_pos - 8, 24)
+	
+	# Glow / energy look: overbright red/orange for Player 0, cyan/blue for Player 1
+	var energy_color = Color(2.5, 0.4, 0.2, 0.85) if player_idx == 0 else Color(0.2, 0.6, 2.5, 0.85)
+	barrier.color = energy_color
+	add_child(barrier)
+	
+	# Pulsing animation using tween
+	var tween = create_tween().set_loops()
+	tween.tween_property(barrier, "color:a", 0.35, 0.35)
+	tween.tween_property(barrier, "color:a", 0.9, 0.35)
+	
+	# Despawn timer after 15 seconds
+	var timer = get_tree().create_timer(15.0)
+	timer.timeout.connect(func():
+		if is_instance_valid(barrier):
+			var fade = create_tween()
+			fade.tween_property(barrier, "color:a", 0.0, 0.45)
+			fade.tween_callback(barrier.queue_free)
+	)
 
 func _on_ball_hit_paddle(player_idx: int):
 	last_hit_player = player_idx

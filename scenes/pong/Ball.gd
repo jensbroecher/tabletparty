@@ -17,6 +17,8 @@ const POWERUP_COLLECT_PARTICLES = preload("res://scenes/pong/effects/PowerUpColl
 
 @export var initial_speed: float = 420.0
 @export var speed_increment: float = 18.0
+@export var min_speed: float = 320.0
+@export var friction: float = 40.0
 
 var current_speed: float
 var speed_multiplier: float = 1.0
@@ -95,6 +97,11 @@ func materialize():
 	)
 
 func _physics_process(delta):
+	# Apply friction / drag to current_speed over time towards min_speed (never stop completely)
+	if not velocity.is_zero_approx() and current_speed > min_speed:
+		current_speed = max(min_speed, current_speed - friction * delta)
+		velocity = velocity.normalized() * current_speed * speed_multiplier
+
 	if is_icy:
 		ice_timer -= delta
 		if ice_timer <= 0:
@@ -199,6 +206,8 @@ func _physics_process(delta):
 					
 					if is_icy and paddle.has_method("freeze"):
 						paddle.freeze(2.6)
+						is_icy = false
+						update_visual()
 					
 					break
 
@@ -255,6 +264,27 @@ func _physics_process(delta):
 				position = b.position + normal * (22 + 28 + 2)
 				break
 
+	# Active Energy Barriers (Goal Protection)
+	for b in get_tree().get_nodes_in_group("barriers"):
+		if is_instance_valid(b):
+			var screen_w = get_viewport_rect().size.x
+			# Check horizontal crossing and vertical bounds (with 11px ball radius margin)
+			if abs(position.x - b.position.x) < 22 and position.y > b.position.y - 11 and position.y < b.position.y + b.size.y + 11:
+				var normal = Vector2.RIGHT if b.position.x < screen_w / 2 else Vector2.LEFT
+				# Only collide if moving towards the barrier
+				if (normal == Vector2.RIGHT and velocity.x < 0) or (normal == Vector2.LEFT and velocity.x > 0):
+					velocity = velocity.bounce(normal)
+					if normal == Vector2.RIGHT:
+						velocity.x = abs(velocity.x)
+					else:
+						velocity.x = -abs(velocity.x)
+					
+					if SoundManager:
+						SoundManager.play_bouncer_hit()
+					
+					position.x = b.position.x + normal.x * 22
+					break
+
 func apply_powerup(powerup):
 	var effect = powerup.get_effect()
 	
@@ -278,6 +308,14 @@ func apply_powerup(powerup):
 		powerup.Type.BIG_PADDLE, powerup.Type.SHRINK_PADDLE:
 			# Handled by arena when we know who last hit the ball
 			get_parent().apply_paddle_powerup(effect)
+			
+		powerup.Type.BARRIER:
+			# Spawn barrier for the player who last hit the ball
+			var target = get_last_hit_player()
+			if target == -1:
+				target = 0 # fallback
+			if get_parent().has_method("spawn_barrier"):
+				get_parent().spawn_barrier(target)
 
 func update_visual():
 	if is_icy:

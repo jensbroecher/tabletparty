@@ -10,8 +10,9 @@ var last_touch_y: float = 0.0
 var initial_x: float = 0.0
 var current_velocity: Vector2 = Vector2.ZERO
 var last_position: Vector2 = Vector2.ZERO
+var target_position: Vector2 = Vector2.ZERO
 
-@export var speed: float = 620.0
+@export var max_speed: float = 1600.0  # Responsive but prevents instant teleportation
 @export var paddle_height: float = 120.0
 
 @onready var visual: Sprite2D = $Sprite2D
@@ -22,6 +23,7 @@ func setup(index: int, color: Color):
 	paddle_color = color
 	initial_x = position.x
 	last_position = position
+	target_position = position
 	
 	if visual and visual.texture:
 		var tex_size = visual.texture.get_size()
@@ -32,6 +34,16 @@ func setup(index: int, color: Color):
 	last_touch_y = get_viewport_rect().size.y / 2.0
 
 func _physics_process(delta):
+	if not frozen:
+		# Smoothly move towards target_position with max speed
+		var diff = target_position - position
+		if diff.length() > 0.01:
+			var step = diff.normalized() * max_speed * delta
+			if step.length() >= diff.length():
+				position = target_position
+			else:
+				position += step
+				
 	if delta > 0:
 		current_velocity = (position - last_position) / delta
 	last_position = position
@@ -53,24 +65,30 @@ func _input(event):
 			if player_index == 0 and event.position.x < half or \
 			   player_index == 1 and event.position.x > half:
 				touch_index = event.index
-				last_touch_y = event.position.y
+				# Set target position on initial touch to travel towards it
+				var target_y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
+				var target_x = event.position.x
+				if player_index == 0:
+					target_x = clamp(target_x, 40, 260)
+				else:
+					var screen_w = get_viewport_rect().size.x
+					target_x = clamp(target_x, screen_w - 260, screen_w - 40)
+				target_position = Vector2(target_x, target_y)
+				last_touch_y = target_y
 		elif event.index == touch_index:
 			touch_index = -1
 	
 	if event is InputEventScreenDrag and event.index == touch_index and not frozen:
-		# Allow movement both vertically and horizontally (forward/back)
-		last_touch_y = event.position.y
-		position.y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
-		
-		# Move forward or back
-		var new_x = event.position.x
+		# Update target position during drag
+		var target_y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
+		var target_x = event.position.x
 		if player_index == 0:
-			# Left player: default is 70, allow moving between 40 and 260
-			position.x = clamp(new_x, 40, 260)
+			target_x = clamp(target_x, 40, 260)
 		else:
-			# Right player: default is screen_size.x - 70, allow moving between screen - 260 and screen - 40
 			var screen_w = get_viewport_rect().size.x
-			position.x = clamp(new_x, screen_w - 260, screen_w - 40)
+			target_x = clamp(target_x, screen_w - 260, screen_w - 40)
+		target_position = Vector2(target_x, target_y)
+		last_touch_y = target_y
 
 func get_forward_speed() -> float:
 	if player_index == 0:
@@ -81,8 +99,8 @@ func get_forward_speed() -> float:
 func freeze(duration: float):
 	frozen = true
 	freeze_time = duration
-	visual.modulate = Color(0.5, 0.85, 1.0)  # Ice blue
-	modulate = Color(0.7, 0.85, 1.0, 0.85)
+	visual.modulate = Color(1.6, 2.0, 2.4)  # Frosty overbright white-blue
+	modulate = Color(1.0, 1.0, 1.0, 0.95)
 	SoundManager.play_freeze()
 
 func unfreeze():
@@ -92,8 +110,8 @@ func unfreeze():
 	modulate = Color.WHITE
 
 func set_temporary_scale(s: float, duration: float):
-	scale = Vector2(s, s)
-	collision.scale = Vector2(s, 1.0)   # only stretch height visually
+	scale = Vector2(1.0, s)
+	collision.scale = Vector2.ONE
 	
 	var t = get_tree().create_timer(duration)
 	t.timeout.connect(func():
@@ -107,8 +125,7 @@ func reset_paddle():
 	scale = original_scale
 	collision.scale = Vector2.ONE
 	position.x = initial_x
-	# Snap to where the user's finger currently is (or last was) instead of center
-	# This prevents the ugly "jump from center" on respawn
 	position.y = clamp(last_touch_y, 80, get_viewport_rect().size.y - 80)
+	target_position = position
 
 
