@@ -15,10 +15,12 @@ var tank2: CharacterBody3D
 
 var score_label: Label
 var round_restarting := false
+var exploding_tank_position: Vector3 = Vector3.ZERO
+var is_focusing_on_explosion := false
 
-# Actual button paths from TankWar.tscn (2-player split layout)
-@onready var fire_p1_btn: Button = $UI/FireP1Button
-@onready var fire_p2_btn: Button = $UI/FireP2Button
+# Actual button paths from TankWar.tscn (new compact split layout)
+@onready var fire_p1_btn: Button = $UI/P1Panel/P1Controls/P1FireButton
+@onready var fire_p2_btn: Button = $UI/P2Panel/P2Controls/P2FireButton
 
 @onready var camera: Camera3D = $Camera3D
 
@@ -37,6 +39,7 @@ var p2_input_reverse := false
 func _ready():
 	GameManager.ensure_two_players()
 	round_restarting = false
+	is_focusing_on_explosion = false
 	
 	# Spawn both tanks in visible positions from the top-down view
 	tank1 = tank_scene.instantiate()
@@ -112,7 +115,7 @@ func _ready():
 
 # Safe explicit wiring for Player 1 (left side)
 func _wire_p1_buttons():
-	var base = "UI/P1Controls/"
+	var base = "UI/P1Panel/P1Controls/"
 	
 	var btn_l = get_node_or_null(base + "P1TurnRow/P1TurnLeft")
 	var btn_r = get_node_or_null(base + "P1TurnRow/P1TurnRight")
@@ -135,7 +138,7 @@ func _wire_p1_buttons():
 
 # Safe explicit wiring for Player 2 (right side)
 func _wire_p2_buttons():
-	var base = "UI/P2Controls/"
+	var base = "UI/P2Panel/P2Controls/"
 	
 	var btn_l = get_node_or_null(base + "P2TurnRow/P2TurnLeft")
 	var btn_r = get_node_or_null(base + "P2TurnRow/P2TurnRight")
@@ -194,32 +197,36 @@ func _update_dynamic_camera(delta: float):
 	if not camera:
 		return
 	
-	var t1_valid = is_instance_valid(tank1)
-	var t2_valid = is_instance_valid(tank2)
-	
 	var target_center: Vector3
 	var target_height: float
 	
-	if t1_valid and t2_valid:
-		var p1 = tank1.global_position
-		var p2 = tank2.global_position
-		target_center = (p1 + p2) / 2.0
-		var distance = p1.distance_to(p2)
-		
-		# Map distance to camera height
-		# Minimum height is 42.0 to prevent zooming in too close
-		# Maximum height is 85.0 to keep tanks in view when far apart
-		var t = clamp((distance - 10.0) / 50.0, 0.0, 1.0)
-		target_height = lerp(42.0, 85.0, t)
-	elif t1_valid:
-		target_center = tank1.global_position
-		target_height = 48.0
-	elif t2_valid:
-		target_center = tank2.global_position
-		target_height = 48.0
+	if is_focusing_on_explosion:
+		target_center = exploding_tank_position
+		target_height = 22.0
 	else:
-		target_center = Vector3.ZERO
-		target_height = 68.0
+		var t1_valid = is_instance_valid(tank1)
+		var t2_valid = is_instance_valid(tank2)
+		
+		if t1_valid and t2_valid:
+			var p1 = tank1.global_position
+			var p2 = tank2.global_position
+			target_center = (p1 + p2) / 2.0
+			var distance = p1.distance_to(p2)
+			
+			# Map distance to camera height
+			# Minimum height is 42.0 to prevent zooming in too close
+			# Maximum height is 85.0 to keep tanks in view when far apart
+			var t = clamp((distance - 10.0) / 50.0, 0.0, 1.0)
+			target_height = lerp(42.0, 85.0, t)
+		elif t1_valid:
+			target_center = tank1.global_position
+			target_height = 48.0
+		elif t2_valid:
+			target_center = tank2.global_position
+			target_height = 48.0
+		else:
+			target_center = Vector3.ZERO
+			target_height = 68.0
 	
 	# Calculate Z-offset to keep the tilt angle looking at the center
 	# Original setup had camera at (0, 68, 12) looking at center (0, 0, 0)
@@ -326,7 +333,7 @@ func _input(event):
 		if event.keycode == KEY_ESCAPE:
 			for i in range(GameManager.players.size()):
 				GameManager.players[i]["score"] = 0
-			get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+			SceneTransition.change_scene("res://scenes/ui/ModeSelection.tscn")
 		else:
 			# Hide controls for the player who pressed the keyboard
 			match event.keycode:
@@ -344,16 +351,14 @@ func _input(event):
 			_set_p2_controls_visible(true)
 
 func _set_p1_controls_visible(is_visible: bool):
-	for path in ["UI/P1Controls", "UI/P1Panel", "UI/FireP1Panel", "UI/FireP1Button"]:
-		var node = get_node_or_null(path)
-		if node:
-			node.visible = is_visible
+	var node = get_node_or_null("UI/P1Panel")
+	if node:
+		node.visible = is_visible
 
 func _set_p2_controls_visible(is_visible: bool):
-	for path in ["UI/P2Controls", "UI/P2Panel", "UI/FireP2Panel", "UI/FireP2Button"]:
-		var node = get_node_or_null(path)
-		if node:
-			node.visible = is_visible
+	var node = get_node_or_null("UI/P2Panel")
+	if node:
+		node.visible = is_visible
 
 func update_score_ui():
 	if not score_label:
@@ -376,10 +381,16 @@ func _on_tank_destroyed(player_id_who_died: int):
 	update_score_ui()
 	
 	var timer = get_tree().create_timer(2.2)
-	timer.timeout.connect(get_tree().reload_current_scene)
+	timer.timeout.connect(SceneTransition.reload_scene)
 
-func _on_tank1_destroyed(_node):
+func _on_tank1_destroyed(node):
+	if is_instance_valid(node):
+		exploding_tank_position = node.global_position
+		is_focusing_on_explosion = true
 	_on_tank_destroyed(0)
 
-func _on_tank2_destroyed(_node):
+func _on_tank2_destroyed(node):
+	if is_instance_valid(node):
+		exploding_tank_position = node.global_position
+		is_focusing_on_explosion = true
 	_on_tank_destroyed(1)

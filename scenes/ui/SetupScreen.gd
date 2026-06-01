@@ -66,5 +66,5 @@ func _on_start_pressed():
 	GameManager.save_players_to_disk(player_data, count_option.selected)
 	
 	GameManager.setup_players(player_data)
-	get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+	SceneTransition.change_scene("res://scenes/ui/ModeSelection.tscn")
 

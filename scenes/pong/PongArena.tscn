@@ -1,12 +1,30 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scenes/pong/PongArena.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/pong/Ball.tscn" id="2_ball"]
+
+[sub_resource type="Shader" id="Shader_Background"]
+code = "shader_type canvas_item;
+
+void fragment() {
+    vec2 center = vec2(0.5, 0.5);
+    float dist = distance(UV, center);
+    vec3 center_color = vec3(0.12, 0.10, 0.15);
+    vec3 edge_color = vec3(0.04, 0.03, 0.05);
+    float factor = smoothstep(0.0, 0.8, dist);
+    vec3 final_color = mix(center_color, edge_color, factor);
+    float noise = (fract(sin(dot(UV ,vec2(12.9898,78.233))) * 43758.5453) - 0.5) * 0.015;
+    COLOR = vec4(final_color + noise, 1.0);
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_Background"]
+shader = SubResource("Shader_Background")
 
 [node name="PongArena" type="Node2D"]
 script = ExtResource("1_script")
 
 [node name="Background" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_Background")
 offset_right = 1280.0
 offset_bottom = 800.0
 color = Color(0.06, 0.055, 0.07, 1)

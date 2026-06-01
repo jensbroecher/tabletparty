@@ -431,14 +431,14 @@ func _on_play_again_pressed():
 	for i in range(GameManager.players.size()):
 		GameManager.players[i]["score"] = 0
 	# Reload current scene
-	get_tree().reload_current_scene()
+	SceneTransition.reload_scene()
 
 func _on_main_menu_pressed():
 	# Reset scores
 	for i in range(GameManager.players.size()):
 		GameManager.players[i]["score"] = 0
 	# Go back to ModeSelection screen
-	get_tree().change_scene_to_file("res://scenes/ui/ModeSelection.tscn")
+	SceneTransition.change_scene("res://scenes/ui/ModeSelection.tscn")
 
 # === PLATFORM WORKAROUNDS ===
 # See Ball.gd for explanation of why we have manual collision systems.
