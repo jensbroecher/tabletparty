@@ -19,6 +19,7 @@ const POWERUP_SCENE = preload("res://scenes/pong/PowerUp.tscn")
 var left_paddle
 var right_paddle
 var last_hit_player: int = -1   # 0 = left, 1 = right
+var pending_paddle_effect: Dictionary = {}
 
 var powerup_timer: Timer
 var screen_size: Vector2
@@ -231,6 +232,7 @@ func spawn_random_powerup():
 func apply_paddle_powerup(effect: Dictionary):
 	var target_player = last_hit_player
 	if target_player == -1:
+		pending_paddle_effect = effect
 		return
 	
 	var paddle = left_paddle if target_player == 0 else right_paddle
@@ -277,6 +279,11 @@ func spawn_barrier(player_idx: int):
 
 func _on_ball_hit_paddle(player_idx: int):
 	last_hit_player = player_idx
+	if not pending_paddle_effect.is_empty():
+		var paddle = left_paddle if player_idx == 0 else right_paddle
+		if paddle and pending_paddle_effect.has("paddle_scale"):
+			paddle.set_temporary_scale(pending_paddle_effect.paddle_scale, pending_paddle_effect.get("duration", 5.0))
+		pending_paddle_effect = {}
 
 func update_score_ui():
 	if not score_label:
@@ -310,6 +317,8 @@ func goal_scored(player_index: int):
 	# Clear any remaining powerups
 	for pu in get_tree().get_nodes_in_group("powerups"):
 		pu.queue_free()
+	
+	pending_paddle_effect = {}
 	
 	# Pause before launching the ball again (using timer for reliability)
 	if ball.has_method("stop_ball"):

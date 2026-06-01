@@ -9,7 +9,14 @@ func _ready():
 	layer = 128
 	
 	color_rect = ColorRect.new()
-	color_rect.anchors_preset = Control.PRESET_FULL_RECT
+	color_rect.anchor_right = 1.0
+	color_rect.anchor_bottom = 1.0
+	color_rect.offset_left = 0
+	color_rect.offset_top = 0
+	color_rect.offset_right = 0
+	color_rect.offset_bottom = 0
+	color_rect.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	color_rect.grow_vertical = Control.GROW_DIRECTION_BOTH
 	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	color_rect.visible = false
 	add_child(color_rect)
@@ -21,12 +28,13 @@ uniform float progress : hint_range(0.0, 1.0) = 0.0;
 uniform bool invert = false;
 
 void fragment() {
+    float border = 1.0 - progress;
     float alpha = 0.0;
     if (!invert) {
-        float border = 1.0 - progress;
-        alpha = smoothstep(border + 0.05, border - 0.05, UV.x);
+        // Fade to black: sweep black from right to left
+        alpha = smoothstep(border - 0.05, border + 0.05, UV.x);
     } else {
-        float border = progress;
+        // Unfade/reveal: sweep transparency from right to left (remove black from right to left)
         alpha = smoothstep(border + 0.05, border - 0.05, UV.x);
     }
     COLOR = vec4(0.0, 0.0, 0.0, alpha);
@@ -41,6 +49,8 @@ func change_scene(target_scene_path: String):
 		return
 	is_transitioning = true
 	
+	# Update size dynamically to match viewport
+	color_rect.size = color_rect.get_viewport_rect().size
 	color_rect.visible = true
 	color_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	
