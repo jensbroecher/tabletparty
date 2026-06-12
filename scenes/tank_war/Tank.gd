@@ -21,6 +21,7 @@ var right_wheel_center_local := Vector3.ZERO
 # Steering value from -1.0 (right) to 1.0 (left), set by TankWar.gd
 var steer_value: float = 0.0
 var _current_steer_angle: float = 0.0
+var floor_normal := Vector3.UP
 
 @onready var dust_trail_left: CPUParticles3D = $DustTrailLeft
 @onready var dust_trail_right: CPUParticles3D = $DustTrailRight
@@ -69,15 +70,20 @@ func _ready():
 				
 				model.scale = Vector3(scale_factor, scale_factor, scale_factor)
 				
-				# Center the model horizontally, and sit bottom of AABB on y = 0
-				# aabb.position is in parent (this Tank's) space because of the transforms
-				var center_offset = aabb.get_center()
-				# We want center_offset to align with local (0, 0.6, 0)
-				model.position = Vector3(0, 0.6, 0) - center_offset * scale_factor
+				# Position the model so its bottom aligns slightly above the collision shape bottom (avoid sinking)
+				var model_bottom_local = aabb.position.y * scale_factor
+				# Collision shape bottom is -0.5. We lift the visual model to y = -0.36 to sit correctly on the ground
+				var target_y = -0.36 - model_bottom_local
+				
+				model.position = Vector3(
+					-aabb.get_center().x * scale_factor,
+					target_y,
+					-aabb.get_center().z * scale_factor
+				)
 			else:
 				# Fallback static scaling if no meshes found or AABB is 0
 				model.scale = model_scale
-				model.position.y = -0.5
+				model.position.y = -0.36
 			
 			# Hide the old CSG shapes
 			for child in ["Body", "TurretBase", "Turret", "Barrel"]:

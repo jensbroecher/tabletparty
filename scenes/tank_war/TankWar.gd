@@ -289,8 +289,16 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 	
 	# Align tank to ground slope normal smoothly
 	var target_up = Vector3.UP
+	var detected_normal = Vector3.UP
 	if tank.is_on_floor():
-		target_up = tank.get_floor_normal()
+		detected_normal = tank.get_floor_normal()
+		
+	# Smoothly filter the ground normal to prevent transition jitter on ramp edges
+	if "floor_normal" in tank:
+		tank.floor_normal = tank.floor_normal.lerp(detected_normal, 10.0 * delta).normalized()
+		target_up = tank.floor_normal
+	else:
+		target_up = detected_normal
 	
 	var current_basis = tank.global_transform.basis
 	var current_right = current_basis.x.normalized()
@@ -300,7 +308,7 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 	var new_x = target_up.cross(new_z).normalized()
 	var target_basis = Basis(new_x, target_up, new_z).orthonormalized()
 	
-	# Smoothly slerp the basis to prevent instant snapping jitter (speed of 8.0 is highly responsive yet smooth)
+	# Smoothly slerp the basis to prevent instant snapping jitter
 	tank.global_transform.basis = current_basis.slerp(target_basis, 8.0 * delta).orthonormalized()
 	
 	tank.move_and_slide()
