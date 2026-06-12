@@ -165,7 +165,7 @@ func _apply_color_to_meshes(node: Node, color: Color):
 func _physics_process(delta):
 	# Movement is currently driven from TankWar.gd for simplicity
 	# (touch buttons feed into TankWar which controls the tank)
-	move_and_slide()
+	pass
 
 func can_shoot() -> bool:
 	var now = Time.get_ticks_msec() / 1000.0

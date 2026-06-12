@@ -280,7 +280,25 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 		# Project velocity on forward vector to detect forward vs reverse movement
 		var speed_forward = new_horizontal_vel.dot(forward_dir)
 		var turn_multiplier = 1.0 if speed_forward >= 0.0 else -1.0
-		tank.rotate_y(turn * turn_multiplier * 2.2 * delta)
+		# Rotate around the local Y axis (the tank's up vector) to turn correctly on slopes
+		var local_up = tank.global_transform.basis.y.normalized()
+		tank.rotate(local_up, turn * turn_multiplier * 2.2 * delta)
+	
+	# Align tank to ground slope normal smoothly
+	var target_up = Vector3.UP
+	if tank.is_on_floor():
+		target_up = tank.get_floor_normal()
+	
+	var current_basis = tank.global_transform.basis
+	var current_right = current_basis.x.normalized()
+	
+	# Recompute Z and X axes relative to target_up normal
+	var new_z = current_right.cross(target_up).normalized()
+	var new_x = target_up.cross(new_z).normalized()
+	var target_basis = Basis(new_x, target_up, new_z).orthonormalized()
+	
+	# Smoothly slerp the basis to prevent instant snapping jitter (speed of 8.0 is highly responsive yet smooth)
+	tank.global_transform.basis = current_basis.slerp(target_basis, 8.0 * delta).orthonormalized()
 	
 	tank.move_and_slide()
 
