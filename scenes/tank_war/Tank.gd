@@ -8,6 +8,23 @@ var current_health: int = 3
 var enemy_tank: CharacterBody3D = null
 var turret_node: Node3D = null
 
+# Front wheel nodes (part_0 and part_2 in model)
+var left_wheel_node: Node3D = null
+var right_wheel_node: Node3D = null
+
+# Initial transforms and local mesh centers to rotate around offset pivots
+var left_wheel_init_transform := Transform3D.IDENTITY
+var right_wheel_init_transform := Transform3D.IDENTITY
+var left_wheel_center_local := Vector3.ZERO
+var right_wheel_center_local := Vector3.ZERO
+
+# Steering value from -1.0 (right) to 1.0 (left), set by TankWar.gd
+var steer_value: float = 0.0
+var _current_steer_angle: float = 0.0
+
+@onready var dust_trail_left: CPUParticles3D = $DustTrailLeft
+@onready var dust_trail_right: CPUParticles3D = $DustTrailRight
+
 @export var speed: float = 12.0
 @export var turn_speed: float = 1.8
 @export var fire_cooldown: float = 0.55   # seconds between shots
@@ -72,6 +89,21 @@ func _ready():
 			turret_node = _find_node_by_name(model, "part_7")
 			if turret_node:
 				print("Found turret node part_7 for: ", name)
+				
+			# Find front wheels part_0 and part_2 and record their initial transforms/centers
+			left_wheel_node = _find_node_by_name(model, "part_0")
+			if left_wheel_node:
+				left_wheel_init_transform = left_wheel_node.transform
+				var left_aabb = _get_combined_aabb(left_wheel_node)
+				left_wheel_center_local = left_aabb.get_center()
+				print("Found left wheel part_0 for: ", name, " center_local: ", left_wheel_center_local)
+				
+			right_wheel_node = _find_node_by_name(model, "part_2")
+			if right_wheel_node:
+				right_wheel_init_transform = right_wheel_node.transform
+				var right_aabb = _get_combined_aabb(right_wheel_node)
+				right_wheel_center_local = right_aabb.get_center()
+				print("Found right wheel part_2 for: ", name, " center_local: ", right_wheel_center_local)
 
 func _get_combined_aabb(node: Node) -> AABB:
 	var aabb = AABB()
@@ -210,6 +242,8 @@ func shoot():
 
 func _process(delta):
 	_aim_turret(delta)
+	_update_wheel_steering(delta)
+	_update_dust_trail()
 
 func _aim_turret(delta: float):
 	if not is_instance_valid(turret_node) or not is_instance_valid(enemy_tank):
@@ -237,6 +271,37 @@ func _aim_turret(delta: float):
 		shoot_point.global_position = target_pos
 		# Align shoot_point rotation so its Z-axis points in the direction of the barrel
 		shoot_point.look_at(target_pos + turret_forward, Vector3.UP)
+
+func _update_wheel_steering(delta: float):
+	# Steer front wheels up to ~28 degrees (0.5 radians) based on steer_value
+	var target_steer = steer_value * 0.5
+	_current_steer_angle = lerp_angle(_current_steer_angle, target_steer, 8.0 * delta)
+	
+	if left_wheel_node:
+		var rot_basis = Basis(Vector3.UP, _current_steer_angle)
+		var new_basis = rot_basis * left_wheel_init_transform.basis
+		var c_parent = left_wheel_init_transform.origin + left_wheel_init_transform.basis * left_wheel_center_local
+		var new_pos = c_parent - new_basis * left_wheel_center_local
+		left_wheel_node.transform = Transform3D(new_basis, new_pos)
+		
+	if right_wheel_node:
+		var rot_basis = Basis(Vector3.UP, _current_steer_angle)
+		var new_basis = rot_basis * right_wheel_init_transform.basis
+		var c_parent = right_wheel_init_transform.origin + right_wheel_init_transform.basis * right_wheel_center_local
+		var new_pos = c_parent - new_basis * right_wheel_center_local
+		right_wheel_node.transform = Transform3D(new_basis, new_pos)
+
+func _update_dust_trail():
+	# Toggle dust trails on/off for both left and right wheels
+	var current_speed = velocity.length()
+	var should_emit = is_on_floor() and current_speed > 2.0
+	
+	if dust_trail_left:
+		if dust_trail_left.emitting != should_emit:
+			dust_trail_left.emitting = should_emit
+	if dust_trail_right:
+		if dust_trail_right.emitting != should_emit:
+			dust_trail_right.emitting = should_emit
 
 func _find_node_by_name(node: Node, target_name: String) -> Node:
 	if node.name == target_name:

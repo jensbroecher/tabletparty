@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://tank001"]
+[gd_scene load_steps=12 format=3 uid="uid://tank001"]
 
 [ext_resource type="Script" path="res://scenes/tank_war/Tank.gd" id="1"]
 
@@ -12,6 +12,35 @@ albedo_color = Color(0.28, 0.3, 0.26, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
 size = Vector3(3.2, 2.2, 5.8)
+
+[sub_resource type="Gradient" id="RadialGradient"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="DustTexture"]
+gradient = SubResource("RadialGradient")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+width = 64
+height = 64
+
+[sub_resource type="StandardMaterial3D" id="DustMat"]
+transparency = 1
+vertex_color_use_as_albedo = true
+albedo_texture = SubResource("DustTexture")
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="DustMesh"]
+material = SubResource("DustMat")
+size = Vector2(1.4, 1.4)
+
+[sub_resource type="Curve" id="DustScaleCurve"]
+_data = [Vector2(0, 0.4), 0.0, 0.0, 0, 0, Vector2(0.25, 1.0), 0.0, 0.0, 0, 0, Vector2(1, 0.0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="DustColorGradient"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0.72, 0.67, 0.61, 0.38, 0.72, 0.67, 0.61, 0)
 
 [node name="Tank" type="CharacterBody3D"]
 script = ExtResource("1")
@@ -46,3 +75,43 @@ shape = SubResource("BoxShape3D_1")
 
 [node name="ShootPoint" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -5.8)
+
+[node name="DustTrailLeft" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.1, 2.4)
+emitting = false
+amount = 15
+lifetime = 0.8
+mesh = SubResource("DustMesh")
+direction = Vector3(0, 0.3, 1)
+spread = 20.0
+gravity = Vector3(0, 0.3, 0)
+initial_velocity_min = 1.5
+initial_velocity_max = 3.5
+damping_min = 1.0
+damping_max = 2.0
+angle_min = -180.0
+angle_max = 180.0
+scale_amount_min = 0.6
+scale_amount_max = 1.6
+scale_amount_curve = SubResource("DustScaleCurve")
+color_ramp = SubResource("DustColorGradient")
+
+[node name="DustTrailRight" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.1, 2.4)
+emitting = false
+amount = 15
+lifetime = 0.8
+mesh = SubResource("DustMesh")
+direction = Vector3(0, 0.3, 1)
+spread = 20.0
+gravity = Vector3(0, 0.3, 0)
+initial_velocity_min = 1.5
+initial_velocity_max = 3.5
+damping_min = 1.0
+damping_max = 2.0
+angle_min = -180.0
+angle_max = 180.0
+scale_amount_min = 0.6
+scale_amount_max = 1.6
+scale_amount_curve = SubResource("DustScaleCurve")
+color_ramp = SubResource("DustColorGradient")

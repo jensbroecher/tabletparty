@@ -252,6 +252,9 @@ func _drive_tank(tank: CharacterBody3D, left: bool, right: bool, fwd: bool, rev:
 		turn = 1.0
 	elif right:
 		turn = -1.0
+		
+	if "steer_value" in tank:
+		tank.steer_value = turn
 	
 	var forward_dir = -tank.global_transform.basis.z
 	var target_vel = forward_dir * move_dir * 14.0
