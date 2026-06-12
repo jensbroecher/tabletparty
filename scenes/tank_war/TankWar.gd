@@ -117,10 +117,10 @@ func _ready():
 func _wire_p1_buttons():
 	var base = "UI/P1Panel/P1Controls/"
 	
-	var btn_l = get_node_or_null(base + "P1TurnRow/P1TurnLeft")
-	var btn_r = get_node_or_null(base + "P1TurnRow/P1TurnRight")
-	var btn_f = get_node_or_null(base + "P1DriveRow/P1Forward")
-	var btn_rev = get_node_or_null(base + "P1DriveRow/P1Reverse")
+	var btn_l = get_node_or_null(base + "P1TurnLeft")
+	var btn_r = get_node_or_null(base + "P1TurnRight")
+	var btn_f = get_node_or_null(base + "P1Forward")
+	var btn_rev = get_node_or_null(base + "P1Reverse")
 	
 	if not btn_l or not btn_r or not btn_f or not btn_rev:
 		push_warning("TANK WAR: One or more P1 buttons are missing from the scene!")
@@ -140,10 +140,10 @@ func _wire_p1_buttons():
 func _wire_p2_buttons():
 	var base = "UI/P2Panel/P2Controls/"
 	
-	var btn_l = get_node_or_null(base + "P2TurnRow/P2TurnLeft")
-	var btn_r = get_node_or_null(base + "P2TurnRow/P2TurnRight")
-	var btn_f = get_node_or_null(base + "P2DriveRow/P2Forward")
-	var btn_rev = get_node_or_null(base + "P2DriveRow/P2Reverse")
+	var btn_l = get_node_or_null(base + "P2TurnLeft")
+	var btn_r = get_node_or_null(base + "P2TurnRight")
+	var btn_f = get_node_or_null(base + "P2Forward")
+	var btn_rev = get_node_or_null(base + "P2Reverse")
 	
 	if not btn_l or not btn_r or not btn_f or not btn_rev:
 		push_warning("TANK WAR: One or more P2 buttons are missing from the scene!")
@@ -302,14 +302,16 @@ func _update_fire_button_state():
 		var ready = tank1.can_shoot()
 		fire_p1_btn.disabled = not ready
 		fire_p1_btn.modulate = Color(1, 1, 1, 1) if ready else Color(0.6, 0.6, 0.6, 0.7)
-		fire_p1_btn.text = "P1 FIRE" if ready else "RELOAD"
+		var p1_name = GameManager.players[0]["name"] if GameManager.players.size() > 0 else "P1"
+		fire_p1_btn.text = (p1_name + " FIRE").to_upper() if ready else "RELOAD"
 	
 	# P2 fire button
 	if fire_p2_btn and is_instance_valid(tank2):
 		var ready = tank2.can_shoot()
 		fire_p2_btn.disabled = not ready
 		fire_p2_btn.modulate = Color(1, 1, 1, 1) if ready else Color(0.6, 0.6, 0.6, 0.7)
-		fire_p2_btn.text = "P2 FIRE" if ready else "RELOAD"
+		var p2_name = GameManager.players[1]["name"] if GameManager.players.size() > 1 else "P2"
+		fire_p2_btn.text = (p2_name + " FIRE").to_upper() if ready else "RELOAD"
 
 # Improves shadow quality for the high top-down camera (reduces jagged/pixelated edges)
 func _tune_topdown_shadows():
