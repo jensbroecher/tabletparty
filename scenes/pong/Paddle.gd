@@ -7,7 +7,7 @@ var frozen: bool = false
 var freeze_time: float = 0.0
 var original_scale: Vector2 = Vector2.ONE
 var last_touch_y: float = 0.0
-var initial_x: float = 0.0
+var initial_position: Vector2 = Vector2.ZERO
 var current_velocity: Vector2 = Vector2.ZERO
 var last_position: Vector2 = Vector2.ZERO
 var target_position: Vector2 = Vector2.ZERO
@@ -21,7 +21,7 @@ var target_position: Vector2 = Vector2.ZERO
 func setup(index: int, color: Color):
 	player_index = index
 	paddle_color = color
-	initial_x = position.x
+	initial_position = position
 	last_position = position
 	target_position = position
 	
@@ -32,6 +32,51 @@ func setup(index: int, color: Color):
 	visual.modulate = color
 	original_scale = scale
 	last_touch_y = get_viewport_rect().size.y / 2.0
+
+func get_bx() -> float:
+	var p = get_parent()
+	if p and "B_x" in p:
+		return p.B_x
+	return 260.0
+
+func get_by() -> float:
+	var p = get_parent()
+	if p and "B_y" in p:
+		return p.B_y
+	return 260.0
+
+func clamp_paddle_position(pos: Vector2) -> Vector2:
+	var screen_w = get_viewport_rect().size.x
+	var screen_h = get_viewport_rect().size.y
+	var num_players = GameManager.players.size()
+	var bx = get_bx()
+	var by = get_by()
+	
+	var target_x = pos.x
+	var target_y = pos.y
+	
+	if player_index == 0:
+		target_x = clamp(target_x, 40, 160)
+		var min_y = by if (num_players >= 3) else 80
+		var max_y = screen_h - by if (num_players >= 3) else screen_h - 80
+		target_y = clamp(target_y, min_y, max_y)
+	elif player_index == 1:
+		target_x = clamp(target_x, screen_w - 160, screen_w - 40)
+		var min_y = by if (num_players >= 3) else 80
+		var max_y = screen_h - by if (num_players >= 3) else screen_h - 80
+		target_y = clamp(target_y, min_y, max_y)
+	elif player_index == 2:
+		var min_x = bx if (num_players >= 3) else 80
+		var max_x = screen_w - bx if (num_players >= 3) else screen_w - 80
+		target_x = clamp(target_x, min_x, max_x)
+		target_y = clamp(target_y, screen_h - 160, screen_h - 40)
+	elif player_index == 3:
+		var min_x = bx if (num_players >= 4) else 80
+		var max_x = screen_w - bx if (num_players >= 4) else screen_w - 80
+		target_x = clamp(target_x, min_x, max_x)
+		target_y = clamp(target_y, 40, 160)
+		
+	return Vector2(target_x, target_y)
 
 func _physics_process(delta):
 	if not frozen:
@@ -55,19 +100,29 @@ func _physics_process(delta):
 				keyboard_dir.x -= 1.0
 			if Input.is_key_pressed(KEY_RIGHT):
 				keyboard_dir.x += 1.0
+		elif player_index == 2: # Bottom
+			if Input.is_key_pressed(KEY_I):
+				keyboard_dir.y -= 1.0
+			if Input.is_key_pressed(KEY_K):
+				keyboard_dir.y += 1.0
+			if Input.is_key_pressed(KEY_J):
+				keyboard_dir.x -= 1.0
+			if Input.is_key_pressed(KEY_L):
+				keyboard_dir.x += 1.0
+		elif player_index == 3: # Top
+			if Input.is_key_pressed(KEY_T):
+				keyboard_dir.y -= 1.0
+			if Input.is_key_pressed(KEY_G):
+				keyboard_dir.y += 1.0
+			if Input.is_key_pressed(KEY_F):
+				keyboard_dir.x -= 1.0
+			if Input.is_key_pressed(KEY_H):
+				keyboard_dir.x += 1.0
 				
 		if keyboard_dir.length() > 0.01:
 			target_position += keyboard_dir * 1100.0 * delta
-			var screen_w = get_viewport_rect().size.x
-			var screen_h = get_viewport_rect().size.y
-			var target_y = clamp(target_position.y, 80, screen_h - 80)
-			var target_x = target_position.x
-			if player_index == 0:
-				target_x = clamp(target_x, 40, 260)
-			else:
-				target_x = clamp(target_x, screen_w - 260, screen_w - 40)
-			target_position = Vector2(target_x, target_y)
-			last_touch_y = target_y
+			target_position = clamp_paddle_position(target_position)
+			last_touch_y = target_position.y
 
 		# Smoothly move towards target_position with max speed
 		var diff = target_position - position
@@ -94,41 +149,60 @@ func _input(event):
 		
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			# Only accept touches on our half of the screen
-			var half = get_viewport_rect().size.x / 2
-			if player_index == 0 and event.position.x < half or \
-			   player_index == 1 and event.position.x > half:
+			if is_touch_in_zone(event.position):
 				touch_index = event.index
-				# Set target position on initial touch to travel towards it
-				var target_y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
-				var target_x = event.position.x
-				if player_index == 0:
-					target_x = clamp(target_x, 40, 260)
-				else:
-					var screen_w = get_viewport_rect().size.x
-					target_x = clamp(target_x, screen_w - 260, screen_w - 40)
-				target_position = Vector2(target_x, target_y)
-				last_touch_y = target_y
+				target_position = clamp_paddle_position(event.position)
+				last_touch_y = target_position.y
 		elif event.index == touch_index:
 			touch_index = -1
 	
 	if event is InputEventScreenDrag and event.index == touch_index and not frozen:
-		# Update target position during drag
-		var target_y = clamp(event.position.y, 80, get_viewport_rect().size.y - 80)
-		var target_x = event.position.x
+		target_position = clamp_paddle_position(event.position)
+		last_touch_y = target_position.y
+
+func is_touch_in_zone(pos: Vector2) -> bool:
+	var screen_w = get_viewport_rect().size.x
+	var screen_h = get_viewport_rect().size.y
+	var num_players = GameManager.players.size()
+	
+	if num_players <= 2:
 		if player_index == 0:
-			target_x = clamp(target_x, 40, 260)
-		else:
-			var screen_w = get_viewport_rect().size.x
-			target_x = clamp(target_x, screen_w - 260, screen_w - 40)
-		target_position = Vector2(target_x, target_y)
-		last_touch_y = target_y
+			return pos.x < screen_w / 2.0
+		elif player_index == 1:
+			return pos.x >= screen_w / 2.0
+		return false
+	
+	var bx = get_bx()
+	if num_players == 3:
+		if player_index == 0:
+			return pos.x < bx
+		elif player_index == 1:
+			return pos.x > screen_w - bx
+		elif player_index == 2:
+			return pos.x >= bx and pos.x <= screen_w - bx
+		return false
+		
+	else:
+		if player_index == 0:
+			return pos.x < bx
+		elif player_index == 1:
+			return pos.x > screen_w - bx
+		elif player_index == 2:
+			return pos.x >= bx and pos.x <= screen_w - bx and pos.y >= screen_h / 2.0
+		elif player_index == 3:
+			return pos.x >= bx and pos.x <= screen_w - bx and pos.y < screen_h / 2.0
+		return false
 
 func get_forward_speed() -> float:
 	if player_index == 0:
 		return max(0.0, current_velocity.x)
-	else:
+	elif player_index == 1:
 		return max(0.0, -current_velocity.x)
+	elif player_index == 2: # Bottom
+		return max(0.0, -current_velocity.y)
+	elif player_index == 3: # Top
+		return max(0.0, current_velocity.y)
+	return 0.0
 
 func freeze(duration: float):
 	frozen = true
@@ -158,8 +232,9 @@ func reset_paddle():
 	unfreeze()
 	scale = original_scale
 	collision.scale = Vector2.ONE
-	position.x = initial_x
-	position.y = clamp(last_touch_y, 80, get_viewport_rect().size.y - 80)
+	position = initial_position
 	target_position = position
+	last_touch_y = position.y
+
 
 

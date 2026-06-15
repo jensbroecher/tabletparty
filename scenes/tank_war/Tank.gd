@@ -1,9 +1,31 @@
 extends CharacterBody3D
 
-signal tank_destroyed(tank_node)
+# === TANK VISUALS NOTE ===
+# The tank now uses an imported low-poly FBX model exclusively (loaded in _ready
+# as a child named "TankModel"). The previous chunky/blocky CSG nodes
+# (Body / TurretBase / Turret / Barrel) have been completely removed from
+# Tank.tscn and all fallback code referencing them has been deleted.
+#
+# This cleanup was necessary because the old CSG geometry + its material/color
+# logic was interfering when we later tried to add other imported FBX buildings
+# and props to the TankWar level (name clashes on "part_*", AABB/scale confusion,
+# hidden nodes polluting the scene graph, etc.).
+#
+# What remains:
+# - CollisionShape3D (simple box, tuned for gameplay)
+# - ShootPoint (dynamically positioned from the FBX turret in _aim_turret)
+# - DustTrail particles
+# - Recursive search for "part_7" (turret) / "part_0" + "part_2" (front wheels)
+#   inside the FBX for animation
+# - Full debris system that shatters the FBX meshes on death
+# - Color tinting applied only to the FBX meshes
+# ==============================================================
+
+signal tank_destroyed(tank_node, killer_id)
 
 @export var max_health: int = 3
 var current_health: int = 3
+var player_id: int = -1
 
 var enemy_tank: CharacterBody3D = null
 var turret_node: Node3D = null
@@ -30,7 +52,8 @@ var floor_normal := Vector3.UP
 @export var turn_speed: float = 1.8
 @export var fire_cooldown: float = 0.55   # seconds between shots
 
-# Adjust these to fit the imported FBX size and orientation
+# Fallback scaling/rotation only used if the FBX fails to load or has no meshes.
+# The real visuals come from the FBX model loaded at runtime (see _ready).
 @export var model_scale: Vector3 = Vector3(0.015, 0.015, 0.015)
 @export var model_rotation_offset: Vector3 = Vector3(0.0, 90.0, 0.0)
 
@@ -85,13 +108,8 @@ func _ready():
 				model.scale = model_scale
 				model.position.y = -0.36
 			
-			# Hide the old CSG shapes
-			for child in ["Body", "TurretBase", "Turret", "Barrel"]:
-				var node = get_node_or_null(child)
-				if node:
-					node.visible = false
-					
-			# Search for turret node part_7 recursively inside the model
+			# Search for turret node part_7 recursively inside the loaded FBX model.
+			# These part names come from the specific tank FBX export.
 			turret_node = _find_node_by_name(model, "part_7")
 			if turret_node:
 				print("Found turret node part_7 for: ", name)
@@ -154,21 +172,8 @@ func _get_combined_aabb_with_transform(node: Node, parent_transform: Transform3D
 	return aabb
 
 func set_tank_color(color: Color):
-	# Apply to CSG nodes (fallback)
-	for child_name in ["Body", "TurretBase", "Turret", "Barrel"]:
-		var node = get_node_or_null(child_name)
-		if node and "material" in node:
-			var mat = node.material
-			if mat is StandardMaterial3D:
-				var new_mat = mat.duplicate()
-				new_mat.albedo_color = color
-				node.material = new_mat
-			else:
-				var new_mat = StandardMaterial3D.new()
-				new_mat.albedo_color = color
-				node.material = new_mat
-	
-	# Apply to FBX model children recursively
+	# Color is applied only to the FBX model (TankModel child).
+	# The old CSG fallback visuals have been removed from the scene.
 	var model = get_node_or_null("TankModel")
 	if model:
 		_apply_color_to_meshes(model, color)
@@ -318,15 +323,15 @@ func _find_node_by_name(node: Node, target_name: String) -> Node:
 			return result
 	return null
 
-func take_damage(amount: int):
+func take_damage(amount: int, killer_id: int = -1):
 	if current_health <= 0:
 		return
 	current_health -= amount
 	if current_health <= 0:
-		explode_and_destroy()
+		explode_and_destroy(killer_id)
 
-func explode_and_destroy():
-	emit_signal("tank_destroyed", self)
+func explode_and_destroy(killer_id: int = -1):
+	emit_signal("tank_destroyed", self, killer_id)
 	# Trigger a big explosion
 	var explosion_scene = preload("res://scenes/tank_war/Explosion.tscn")
 	if explosion_scene:

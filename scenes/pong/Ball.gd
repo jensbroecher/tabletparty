@@ -73,9 +73,21 @@ func reset_ball():
 	update_visual()
 	queue_redraw()
 	
-	var angle = randf_range(-0.6, 0.6)
-	if randf() > 0.5:
-		angle += PI
+	var angle = 0.0
+	var num_players = GameManager.players.size()
+	if num_players <= 2:
+		angle = randf_range(-0.6, 0.6)
+		if randf() > 0.5:
+			angle += PI
+	else:
+		angle = randf_range(0.0, 2.0 * PI)
+		# Avoid exact cardinal angles to keep it dynamic
+		for attempt in range(10):
+			var rem = fmod(angle, PI / 2.0)
+			if abs(rem) < 0.25 or abs(PI / 2.0 - abs(rem)) < 0.25:
+				angle = randf_range(0.0, 2.0 * PI)
+			else:
+				break
 	velocity = Vector2.RIGHT.rotated(angle) * current_speed * speed_multiplier
 	
 	# Materialize effect (fade in and scale up from center)
@@ -98,6 +110,7 @@ func materialize():
 	)
 
 func _physics_process(delta):
+	var p = get_parent()
 	# Apply friction / drag to current_speed over time towards min_speed (never stop completely)
 	if not velocity.is_zero_approx() and current_speed > min_speed:
 		current_speed = max(min_speed, current_speed - friction * delta)
@@ -125,11 +138,13 @@ func _physics_process(delta):
 				collider._on_ball_hit()
 			SoundManager.play_bouncer_hit()
 		elif collider is StaticBody2D:
-			# Regular wall hit (top/bottom walls)
 			velocity = velocity.bounce(normal)
 			SoundManager.play_wall_hit()
-		else:
-			velocity = velocity.bounce(normal)
+			if p:
+				if p.has_method("flash_wall") and collider.is_in_group("walls"):
+					p.flash_wall(collider)
+				elif p.has_method("flash_corner_wall") and collider.name.begins_with("CornerWall"):
+					p.flash_corner_wall(collider)
 
 		# Increase speed slightly on every bounce (classic pong + chaos)
 		current_speed = min(current_speed + speed_increment, 820)  # cap to reduce tunneling
@@ -149,72 +164,85 @@ func _physics_process(delta):
 	# === MANUAL PADDLE COLLISION ===
 	# Runtime set_script() on Android + Godot 4.7 beta breaks normal CharacterBody2D collisions.
 	# We do a generous manual overlap check instead (this is the main workaround).
-	var p = get_parent()
 	if p:
-		var paddles = []
-		if p.left_paddle: paddles.append(p.left_paddle)
-		if p.right_paddle: paddles.append(p.right_paddle)
+		var paddles_to_check = p.paddles if "paddles" in p else []
 		
-		for paddle in paddles:
+		for paddle in paddles_to_check:
 			if not is_instance_valid(paddle):
 				continue
 			
-			var dy = position.y - paddle.position.y
-			if abs(dy) < 80:
-				var is_collision = false
-				var push_x = 0.0
-				var normal = Vector2.ZERO
+			var is_collision = false
+			var push_pos = Vector2.ZERO
+			var normal = Vector2.ZERO
+			var screen_w = get_viewport_rect().size.x
+			var screen_h = get_viewport_rect().size.y
+			
+			if paddle.player_index == 0 or paddle.player_index == 1:
+				# Vertical paddles (Left / Right)
+				var dy = position.y - paddle.position.y
+				if abs(dy) < 80:
+					if paddle.player_index == 0: # Left paddle
+						if position.x < paddle.position.x + 25 and position.x > 50 and position.x < screen_w / 2:
+							is_collision = true
+							push_pos = Vector2(paddle.position.x + 25, position.y)
+							normal = Vector2.RIGHT
+					else: # Right paddle
+						if position.x > paddle.position.x - 25 and position.x < screen_w - 50 and position.x > screen_w / 2:
+							is_collision = true
+							push_pos = Vector2(paddle.position.x - 25, position.y)
+							normal = Vector2.LEFT
+			elif paddle.player_index == 2 or paddle.player_index == 3:
+				# Horizontal paddles (Bottom / Top)
+				var dx = position.x - paddle.position.x
+				if abs(dx) < 80:
+					if paddle.player_index == 2: # Bottom paddle
+						if position.y > paddle.position.y - 25 and position.y < screen_h - 50 and position.y > screen_h / 2:
+							is_collision = true
+							push_pos = Vector2(position.x, paddle.position.y - 25)
+							normal = Vector2.UP
+					else: # Top paddle
+						if position.y < paddle.position.y + 25 and position.y > 50 and position.y < screen_h / 2:
+							is_collision = true
+							push_pos = Vector2(position.x, paddle.position.y + 25)
+							normal = Vector2.DOWN
+			
+			if is_collision:
+				position = push_pos
+				velocity = velocity.bounce(normal)
 				
-				# Get viewport size for correct screen division/bounds
-				var screen_w = get_viewport_rect().size.x
+				# Ensure velocity is pointing in the correct normal direction
+				if normal == Vector2.RIGHT:
+					velocity.x = abs(velocity.x)
+				elif normal == Vector2.LEFT:
+					velocity.x = -abs(velocity.x)
+				elif normal == Vector2.UP:
+					velocity.y = -abs(velocity.y)
+				elif normal == Vector2.DOWN:
+					velocity.y = abs(velocity.y)
 				
-				if paddle.player_index == 0: # Left paddle
-					if position.x < paddle.position.x + 25 and position.x > 50 and position.x < screen_w / 2:
-						is_collision = true
-						push_x = paddle.position.x + 25
-						normal = Vector2.RIGHT
-				else: # Right paddle
-					if position.x > paddle.position.x - 25 and position.x < screen_w - 50 and position.x > screen_w / 2:
-						is_collision = true
-						push_x = paddle.position.x - 25
-						normal = Vector2.LEFT
+				# EXTRA VELOCITY BOOST!
+				var extra_boost = 0.0
+				if paddle.has_method("get_forward_speed"):
+					var fwd_speed = paddle.get_forward_speed()
+					if fwd_speed > 150.0:  # Threshold for "rapidly moving"
+						extra_boost = clamp(fwd_speed * 0.45, 50.0, 350.0) # boost between 50 and 350
+						if SoundManager:
+							SoundManager._play_tone(1100, 0.15, 0.8)
 				
-				if is_collision:
-					position.x = push_x
-					velocity = velocity.bounce(normal)
-					
-					# Ensure velocity is pointing in the correct normal direction
-					if normal == Vector2.RIGHT:
-						velocity.x = abs(velocity.x)
-					else:
-						velocity.x = -abs(velocity.x)
-					
-					# EXTRA VELOCITY BOOST!
-					# Check if the paddle is moving forward rapidly when impacted.
-					var extra_boost = 0.0
-					if paddle.has_method("get_forward_speed"):
-						var fwd_speed = paddle.get_forward_speed()
-						if fwd_speed > 150.0:  # Threshold for "rapidly moving"
-							extra_boost = clamp(fwd_speed * 0.45, 50.0, 350.0) # boost between 50 and 350
-							# Also add a nice visual/audio feedback for a smash!
-							if SoundManager:
-								# Play high pitched hit
-								SoundManager._play_tone(1100, 0.15, 0.8)
-					
-					velocity = velocity.normalized() * max(velocity.length() * 1.05 + extra_boost, 380)
-					
-					if p.has_method("_on_ball_hit_paddle"):
-						p._on_ball_hit_paddle(paddle.player_index)
-					
-					if SoundManager and extra_boost == 0.0:
-						SoundManager.play_paddle_hit()
-					
-					if is_icy and paddle.has_method("freeze"):
-						paddle.freeze(2.6)
-						is_icy = false
-						update_visual()
-					
-					break
+				velocity = velocity.normalized() * max(velocity.length() * 1.05 + extra_boost, 380)
+				
+				if p.has_method("_on_ball_hit_paddle"):
+					p._on_ball_hit_paddle(paddle.player_index)
+				
+				if SoundManager and extra_boost == 0.0:
+					SoundManager.play_paddle_hit()
+				
+				if is_icy and paddle.has_method("freeze"):
+					paddle.freeze(2.6)
+					is_icy = false
+					update_visual()
+				
+				break
 
 	# === MANUAL BUMPER + ITEM DETECTION ===
 	# After runtime script forcing, normal collisions and Area signals are unreliable.
@@ -273,22 +301,128 @@ func _physics_process(delta):
 	for b in get_tree().get_nodes_in_group("barriers"):
 		if is_instance_valid(b):
 			var screen_w = get_viewport_rect().size.x
-			# Check horizontal crossing and vertical bounds (with 11px ball radius margin)
-			if abs(position.x - b.position.x) < 22 and position.y > b.position.y - 11 and position.y < b.position.y + b.size.y + 11:
-				var normal = Vector2.RIGHT if b.position.x < screen_w / 2 else Vector2.LEFT
-				# Only collide if moving towards the barrier
-				if (normal == Vector2.RIGHT and velocity.x < 0) or (normal == Vector2.LEFT and velocity.x > 0):
-					velocity = velocity.bounce(normal)
-					if normal == Vector2.RIGHT:
-						velocity.x = abs(velocity.x)
-					else:
-						velocity.x = -abs(velocity.x)
-					
-					if SoundManager:
-						SoundManager.play_bouncer_hit()
-					
-					position.x = b.position.x + normal.x * 22
-					break
+			var screen_h = get_viewport_rect().size.y
+			var is_horizontal = b.size.x > b.size.y
+			
+			if not is_horizontal:
+				# Vertical barrier (Left / Right)
+				if abs(position.x - b.position.x) < 22 and position.y > b.position.y - 22 and position.y < b.position.y + b.size.y + 22:
+					var normal = Vector2.RIGHT if b.position.x < screen_w / 2 else Vector2.LEFT
+					if (normal == Vector2.RIGHT and velocity.x < 0) or (normal == Vector2.LEFT and velocity.x > 0):
+						velocity = velocity.bounce(normal)
+						if normal == Vector2.RIGHT:
+							velocity.x = abs(velocity.x)
+						else:
+							velocity.x = -abs(velocity.x)
+						
+						if SoundManager:
+							SoundManager.play_bouncer_hit()
+						
+						# Energy shield flash
+						var orig = b.color
+						b.color = Color(orig.r * 1.8, orig.g * 1.8, orig.b * 1.8, 1.0)
+						var tw = create_tween()
+						tw.tween_property(b, "color", orig, 0.25)
+						
+						position.x = b.position.x + normal.x * 22
+						break
+			else:
+				# Horizontal barrier (Top / Bottom)
+				if abs(position.y - b.position.y) < 22 and position.x > b.position.x - 22 and position.x < b.position.x + b.size.x + 22:
+					var normal = Vector2.DOWN if b.position.y < screen_h / 2 else Vector2.UP
+					if (normal == Vector2.DOWN and velocity.y < 0) or (normal == Vector2.UP and velocity.y > 0):
+						velocity = velocity.bounce(normal)
+						if normal == Vector2.DOWN:
+							velocity.y = abs(velocity.y)
+						else:
+							velocity.y = -abs(velocity.y)
+						
+						if SoundManager:
+							SoundManager.play_bouncer_hit()
+						
+						# Energy shield flash
+						var orig = b.color
+						b.color = Color(orig.r * 1.8, orig.g * 1.8, orig.b * 1.8, 1.0)
+						var tw = create_tween()
+						tw.tween_property(b, "color", orig, 0.25)
+						
+						position.y = b.position.y + normal.y * 22
+						break
+						
+	# === MANUAL CORNER TRIANGLE COLLISION ===
+	if GameManager.players.size() >= 3:
+		var screen_w = get_viewport_rect().size.x
+		var screen_h = get_viewport_rect().size.y
+		var num_players = GameManager.players.size()
+		
+		# Fetch dynamic barrier sizes from parent
+		var bx = 260.0
+		var by = 260.0
+		if p:
+			if "B_x" in p: bx = p.B_x
+			if "B_y" in p: by = p.B_y
+			
+		var R = 22.0 # Ball radius + padding
+		
+		# Bottom-Left (BL) Corner
+		if position.x < bx and position.y > screen_h - by:
+			var P0 = Vector2(0, screen_h - by)
+			var n = Vector2(by, -bx).normalized()
+			var d = (position - P0).dot(n)
+			if d < R:
+				position += n * (R - d)
+				velocity = velocity.bounce(n)
+				if SoundManager:
+					SoundManager.play_wall_hit()
+				if p and p.has_method("flash_corner_wall"):
+					var wall = p.get_node_or_null("CornerWall_BL")
+					if wall:
+						p.flash_corner_wall(wall)
+				
+		# Bottom-Right (BR) Corner
+		elif position.x > screen_w - bx and position.y > screen_h - by:
+			var P0 = Vector2(screen_w, screen_h - by)
+			var n = Vector2(-by, -bx).normalized()
+			var d = (position - P0).dot(n)
+			if d < R:
+				position += n * (R - d)
+				velocity = velocity.bounce(n)
+				if SoundManager:
+					SoundManager.play_wall_hit()
+				if p and p.has_method("flash_corner_wall"):
+					var wall = p.get_node_or_null("CornerWall_BR")
+					if wall:
+						p.flash_corner_wall(wall)
+				
+		# Top-Left (TL) Corner
+		elif position.x < bx and position.y < by:
+			var P0 = Vector2(0, by)
+			var n = Vector2(by, bx).normalized()
+			var d = (position - P0).dot(n)
+			if d < R:
+				position += n * (R - d)
+				velocity = velocity.bounce(n)
+				if SoundManager:
+					SoundManager.play_wall_hit()
+				if p and p.has_method("flash_corner_wall"):
+					var wall = p.get_node_or_null("CornerWall_TL")
+					if wall:
+						p.flash_corner_wall(wall)
+				
+		# Top-Right (TR) Corner
+		elif position.x > screen_w - bx and position.y < by:
+			var P0 = Vector2(screen_w, by)
+			var n = Vector2(-by, bx).normalized()
+			var d = (position - P0).dot(n)
+			if d < R:
+				position += n * (R - d)
+				velocity = velocity.bounce(n)
+				if SoundManager:
+					SoundManager.play_wall_hit()
+				if p and p.has_method("flash_corner_wall"):
+					var wall = p.get_node_or_null("CornerWall_TR")
+					if wall:
+						p.flash_corner_wall(wall)
 
 func apply_powerup(powerup):
 	var effect = powerup.get_effect()

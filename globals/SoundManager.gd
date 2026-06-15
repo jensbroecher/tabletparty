@@ -153,3 +153,29 @@ func _play_explosion_sound(duration := 0.45):
 		
 		var s: float = clamp(rumble + noise, -1.0, 1.0) * 0.65
 		playback.push_frame(Vector2(s, s))
+
+func play_splash():
+	_play_splash_sound()
+
+func _play_splash_sound(duration := 0.5):
+	_ensure_playback()
+	if not playback:
+		return
+
+	var samples := int(duration * SAMPLE_RATE)
+
+	for i in range(samples):
+		var t: float = float(i) / samples
+		var env: float = 1.0 - pow(t, 0.4)   # fast attack, logarithmic decay
+		
+		# White/pink noise component (splash spray)
+		var noise: float = (randf() * 2.0 - 1.0) * env * 0.4
+		
+		# Bubble resonance frequency sweep: starts higher and goes down, wobbling
+		var wobble: float = sin(t * 80.0) * 40.0
+		var freq: float = lerp(450.0, 180.0, t) + wobble
+		var phase: float = t * freq * TAU
+		var bubble: float = sin(phase) * env * 0.5
+		
+		var s: float = clamp(bubble + noise, -1.0, 1.0) * 0.5
+		playback.push_frame(Vector2(s, s))

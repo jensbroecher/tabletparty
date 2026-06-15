@@ -18,3 +18,6 @@ Thumbs.db
 
 # Godot UID cache files (4.7+)
 *.uid
+
+# Large assets exceeding GitHub limits (>100MB)
+assets/tankbattle/20260601193000_e0592ad6*

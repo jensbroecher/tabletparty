@@ -54,8 +54,11 @@ func _on_body_entered(body):
 		return
 		
 	if body.is_in_group("tank"):
+		var killer_id = -1
+		if is_instance_valid(shooter) and "player_id" in shooter:
+			killer_id = shooter.player_id
 		if body.has_method("take_damage"):
-			body.take_damage(damage)
+			body.take_damage(damage, killer_id)
 	_explode()
 
 func _explode():

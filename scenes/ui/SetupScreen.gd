@@ -3,7 +3,7 @@ extends Control
 @onready var player_list = %PlayerList
 @onready var count_option = %OptionButton
 
-var colors = [Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW]
+var colors = [Color.RED, Color.BLUE, Color.ORANGE, Color.YELLOW]
 
 func _ready():
 	# Load previous setup
@@ -67,4 +67,15 @@ func _on_start_pressed():
 	
 	GameManager.setup_players(player_data)
 	SceneTransition.change_scene("res://scenes/ui/ModeSelection.tscn")
+
+func _on_reset_pressed():
+	for i in range(player_list.get_child_count()):
+		var hbox = player_list.get_child(i)
+		if hbox.get_child_count() >= 3:
+			var name_node = hbox.get_child(1) as LineEdit
+			var color_node = hbox.get_child(2) as ColorPickerButton
+			if name_node:
+				name_node.text = ""
+			if color_node:
+				color_node.color = colors[i]
 

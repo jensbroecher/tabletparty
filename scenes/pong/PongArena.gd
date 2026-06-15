@@ -16,24 +16,34 @@ const POWERUP_SCENE = preload("res://scenes/pong/PowerUp.tscn")
 @onready var score_label: Label = $UI/ScoreLabel
 @onready var ball = $Ball
 
-var left_paddle
-var right_paddle
-var last_hit_player: int = -1   # 0 = left, 1 = right
+var paddles = []
+var last_hit_player: int = -1
 var pending_paddle_effect: Dictionary = {}
 
 var powerup_timer: Timer
 var screen_size: Vector2
 var game_over: bool = false
 
+var G: float = 280.0
+var B_x: float = 500.0
+var B_y: float = 260.0
+
 func _ready():
 	game_over = false
 	screen_size = get_viewport_rect().size
 	
-	GameManager.ensure_two_players()
+	# Calculate dynamic barrier sizes to make all goals the same size (280px)
+	G = screen_size.y * 0.35
+	B_x = (screen_size.x - G) / 2.0
+	B_y = (screen_size.y - G) / 2.0
 	
-	# Force 2-player setup for the new fun mode (Left vs Right)
-	setup_two_player_game()
+	# Ensure at least two players
+	if GameManager.players.size() < 2:
+		GameManager.ensure_two_players()
+	
+	setup_game()
 	create_walls()
+	create_corner_barriers()
 	create_bouncers()
 	setup_powerup_spawner()
 	
@@ -77,30 +87,95 @@ func _ready():
 
 	
 	update_score_ui()
+	
+	# Dynamic center line setup
+	var center_line = $CenterLine
+	if center_line:
+		var num_players = GameManager.players.size()
+		center_line.color = Color(0.25, 0.25, 0.28, 0.6)
+		
+		# Adjust vertical center line length based on top/bottom barriers
+		if num_players >= 3:
+			center_line.size = Vector2(4, screen_size.y - 2.0 * B_y)
+			center_line.position = Vector2(screen_size.x / 2 - 2, B_y)
+		else:
+			center_line.size = Vector2(4, screen_size.y)
+			center_line.position = Vector2(screen_size.x / 2 - 2, 0)
+		
+		# Add horizontal line in 3/4 player modes to segment screen
+		if num_players >= 3:
+			var horiz_line = ColorRect.new()
+			horiz_line.name = "HorizontalCenterLine"
+			horiz_line.color = Color(0.25, 0.25, 0.28, 0.6)
+			horiz_line.size = Vector2(screen_size.x - 2.0 * B_x, 4)
+			horiz_line.position = Vector2(B_x, screen_size.y / 2 - 2)
+			add_child(horiz_line)
+			move_child(horiz_line, center_line.get_index() + 1)
 
-func setup_two_player_game():
-	# Left player (Player 0)
-	left_paddle = PADDLE_SCENE.instantiate()
-	add_child(left_paddle)
-	left_paddle.position = Vector2(70, screen_size.y / 2)
-	left_paddle.setup(0, Color(0.95, 0.3, 0.3))   # Red-ish
+func setup_game():
+	paddles.clear()
+	var num_players = GameManager.players.size()
 	
-	# Right player (Player 1)
-	right_paddle = PADDLE_SCENE.instantiate()
-	add_child(right_paddle)
-	right_paddle.position = Vector2(screen_size.x - 70, screen_size.y / 2)
-	right_paddle.setup(1, Color(0.3, 0.6, 1.0))   # Blue-ish
-	
-	# Ensure correct paddle collision layers
-	left_paddle.collision_layer = 8
-	left_paddle.collision_mask = 2
-	right_paddle.collision_layer = 8
-	right_paddle.collision_mask = 2
-	
-	# Goals behind each paddle - made much thicker to prevent tunneling at high speeds
-	create_goal(0, Vector2(20, screen_size.y / 2), Vector2(200, screen_size.y * 0.95))
-	create_goal(1, Vector2(screen_size.x - 20, screen_size.y / 2), Vector2(200, screen_size.y * 0.95))
-	
+	# Instantiate paddles based on player count
+	for i in range(num_players):
+		var p_data = GameManager.players[i]
+		var paddle = PADDLE_SCENE.instantiate()
+		add_child(paddle)
+		paddles.append(paddle)
+		
+		# Position and rotate paddle depending on player index
+		var pos = Vector2.ZERO
+		var rot = 0.0
+		
+		if i == 0: # Left
+			pos = Vector2(70, screen_size.y / 2)
+			rot = 0.0
+		elif i == 1: # Right
+			pos = Vector2(screen_size.x - 70, screen_size.y / 2)
+			rot = 0.0
+		elif i == 2: # Bottom
+			pos = Vector2(screen_size.x / 2, screen_size.y - 70)
+			rot = 90.0
+		elif i == 3: # Top
+			pos = Vector2(screen_size.x / 2, 70)
+			rot = 90.0
+			
+		paddle.position = pos
+		paddle.rotation_degrees = rot
+		paddle.setup(i, p_data["color"])
+		
+		# Set collision layers
+		paddle.collision_layer = 8
+		paddle.collision_mask = 2
+		
+	# Create goals for each player
+	for i in range(num_players):
+		var goal_pos = Vector2.ZERO
+		var goal_size = Vector2.ZERO
+		
+		if i == 0: # Left
+			if num_players == 2:
+				goal_pos = Vector2(20, screen_size.y / 2)
+				goal_size = Vector2(200, screen_size.y * 0.95)
+			else: # 3 or 4 players
+				goal_pos = Vector2(20, screen_size.y / 2)
+				goal_size = Vector2(200, G)
+		elif i == 1: # Right
+			if num_players == 2:
+				goal_pos = Vector2(screen_size.x - 20, screen_size.y / 2)
+				goal_size = Vector2(200, screen_size.y * 0.95)
+			else: # 3 or 4 players
+				goal_pos = Vector2(screen_size.x - 20, screen_size.y / 2)
+				goal_size = Vector2(200, G)
+		elif i == 2: # Bottom
+			goal_pos = Vector2(screen_size.x / 2, screen_size.y - 20)
+			goal_size = Vector2(G, 200)
+		elif i == 3: # Top
+			goal_pos = Vector2(screen_size.x / 2, 20)
+			goal_size = Vector2(G, 200)
+			
+		create_goal(i, goal_pos, goal_size)
+		
 	# Make sure ball is on top
 	ball.z_index = 10
 
@@ -118,54 +193,243 @@ func create_goal(player_idx: int, pos: Vector2, size: Vector2):
 	var indicator = ColorRect.new()
 	indicator.size = size
 	indicator.position = -size / 2
-	indicator.color = Color(0.9, 0.25, 0.25, 0.08) if player_idx == 0 else Color(0.25, 0.55, 0.95, 0.08)
+	var player_color = GameManager.players[player_idx]["color"] if player_idx < GameManager.players.size() else Color.WHITE
+	indicator.color = Color(player_color.r, player_color.g, player_color.b, 0.08)
 	add_child(indicator)
 	indicator.z_index = -5
 
 func create_walls():
-	# Top wall
-	create_wall(Vector2(screen_size.x/2, 12), Vector2(screen_size.x, 24))
-	# Bottom wall
-	create_wall(Vector2(screen_size.x/2, screen_size.y - 12), Vector2(screen_size.x, 24))
+	var num_players = GameManager.players.size()
+	if num_players <= 3:
+		# Top wall (only spans the middle gap G if 3-player, because top corners are blocked by TL/TR triangles)
+		var wall_width = G if (num_players == 3) else screen_size.x
+		var wall = create_wall(Vector2(screen_size.x/2, 12), Vector2(wall_width, 24))
+		wall.name = "Wall_Top"
+	if num_players <= 2:
+		# Bottom wall
+		var wall = create_wall(Vector2(screen_size.x/2, screen_size.y - 12), Vector2(screen_size.x, 24))
+		wall.name = "Wall_Bottom"
 
-func create_wall(pos: Vector2, size: Vector2):
+func create_wall(pos: Vector2, size: Vector2) -> StaticBody2D:
 	var wall = StaticBody2D.new()
 	wall.collision_layer = 1
 	wall.collision_mask = 2
+	wall.add_to_group("walls")
+	
 	var shape_node = CollisionShape2D.new()
 	var rect = RectangleShape2D.new()
-	# Make collision thicker to prevent tunneling at high speeds
 	rect.size = size + Vector2(0, 30) if size.x > size.y else size + Vector2(30, 0)
 	shape_node.shape = rect
 	wall.add_child(shape_node)
 	wall.position = pos
 	add_child(wall)
 	
-	# Visual (keep original size for looks)
+	# Background visual matching the triangular corner blocks
 	var v = ColorRect.new()
-	v.color = Color(0.15, 0.15, 0.18)
+	v.name = "Visual"
+	v.color = Color(0.10, 0.09, 0.12)
 	v.size = size
 	v.position = -size / 2
 	wall.add_child(v)
+	
+	# Draw the border line facing the center of the arena
+	var line = Line2D.new()
+	line.name = "Line"
+	var line_points = PackedVector2Array()
+	
+	# If top wall (pos.y near top), face bottom edge. Else face top edge.
+	if pos.y < get_viewport_rect().size.y / 2: # Top wall
+		line_points.append(Vector2(-size.x / 2, size.y / 2))
+		line_points.append(Vector2(size.x / 2, size.y / 2))
+	else: # Bottom wall
+		line_points.append(Vector2(-size.x / 2, -size.y / 2))
+		line_points.append(Vector2(size.x / 2, -size.y / 2))
+		
+	line.points = line_points
+	line.width = 4.0
+	line.default_color = Color(0.22, 0.20, 0.25, 0.7)
+	line.antialiased = true
+	wall.add_child(line)
+	
+	return wall
+
+func create_corner_barriers():
+	var num_players = GameManager.players.size()
+	if num_players < 3:
+		return
+		
+	var barrier_size = Vector2(B_x, B_y)
+	
+	# Bottom-Left
+	var bl = create_corner_wall(Vector2(B_x / 2.0, screen_size.y - B_y / 2.0), barrier_size, "BL")
+	bl.name = "CornerWall_BL"
+	# Bottom-Right
+	var br = create_corner_wall(Vector2(screen_size.x - B_x / 2.0, screen_size.y - B_y / 2.0), barrier_size, "BR")
+	br.name = "CornerWall_BR"
+	
+	# In both 3 and 4 player modes, the top corners are blocked by corner barriers too!
+	# (In 3-player, the middle gap G is blocked by the top wall, so the top side is fully closed.
+	# In 4-player, the middle gap G is open as a goal.)
+	# Top-Left
+	var tl = create_corner_wall(Vector2(B_x / 2.0, B_y / 2.0), barrier_size, "TL")
+	tl.name = "CornerWall_TL"
+	# Top-Right
+	var tr = create_corner_wall(Vector2(screen_size.x - B_x / 2.0, B_y / 2.0), barrier_size, "TR")
+	tr.name = "CornerWall_TR"
+
+func create_corner_wall(pos: Vector2, size: Vector2, corner_type: String) -> StaticBody2D:
+	var wall = StaticBody2D.new()
+	wall.collision_layer = 1
+	wall.collision_mask = 2
+	
+	var shape_node = CollisionPolygon2D.new()
+	var visual_poly = Polygon2D.new()
+	
+	var hx = size.x / 2.0
+	var hy = size.y / 2.0
+	var points = PackedVector2Array()
+	
+	if corner_type == "BL":
+		points.append(Vector2(-hx, hy))  # Corner (Bottom-Left)
+		points.append(Vector2(hx, hy))   # Bottom-Right
+		points.append(Vector2(-hx, -hy)) # Top-Left
+	elif corner_type == "BR":
+		points.append(Vector2(hx, hy))   # Corner (Bottom-Right)
+		points.append(Vector2(-hx, hy))  # Bottom-Left
+		points.append(Vector2(hx, -hy))  # Top-Right
+	elif corner_type == "TL":
+		points.append(Vector2(-hx, -hy)) # Corner (Top-Left)
+		points.append(Vector2(hx, -hy))  # Top-Right
+		points.append(Vector2(-hx, hy))  # Bottom-Left
+	elif corner_type == "TR":
+		points.append(Vector2(hx, -hy))  # Corner (Top-Right)
+		points.append(Vector2(-hx, -hy)) # Top-Left
+		points.append(Vector2(hx, hy))   # Bottom-Right
+		
+	shape_node.polygon = points
+	wall.add_child(shape_node)
+	
+	visual_poly.name = "Visual"
+	visual_poly.polygon = points
+	visual_poly.color = Color(0.10, 0.09, 0.12)
+	wall.add_child(visual_poly)
+	
+	# Draw the diagonal outline facing the center
+	var line = Line2D.new()
+	var line_points = PackedVector2Array()
+	
+	if corner_type == "BL":
+		line_points.append(Vector2(hx, hy))
+		line_points.append(Vector2(-hx, -hy))
+	elif corner_type == "BR":
+		line_points.append(Vector2(-hx, hy))
+		line_points.append(Vector2(hx, -hy))
+	elif corner_type == "TL":
+		line_points.append(Vector2(hx, -hy))
+		line_points.append(Vector2(-hx, hy))
+	elif corner_type == "TR":
+		line_points.append(Vector2(-hx, -hy))
+		line_points.append(Vector2(hx, hy))
+		
+	line.name = "Line"
+	line.points = line_points
+	line.width = 4.0
+	line.default_color = Color(0.22, 0.20, 0.25, 0.7)
+	line.antialiased = true
+	wall.add_child(line)
+	
+	# Draw the outer edges outlines to frame the play area cleanly
+	var outer_line = Line2D.new()
+	var outer_points = PackedVector2Array()
+	
+	if corner_type == "BL":
+		# Top-Left to Corner to Bottom-Right
+		outer_points.append(Vector2(-hx, -hy))
+		outer_points.append(Vector2(-hx, hy))
+		outer_points.append(Vector2(hx, hy))
+	elif corner_type == "BR":
+		# Top-Right to Corner to Bottom-Left
+		outer_points.append(Vector2(hx, -hy))
+		outer_points.append(Vector2(hx, hy))
+		outer_points.append(Vector2(-hx, hy))
+	elif corner_type == "TL":
+		# Bottom-Left to Corner to Top-Right
+		outer_points.append(Vector2(-hx, hy))
+		outer_points.append(Vector2(-hx, -hy))
+		outer_points.append(Vector2(hx, -hy))
+	elif corner_type == "TR":
+		# Bottom-Right to Corner to Top-Left
+		outer_points.append(Vector2(hx, hy))
+		outer_points.append(Vector2(hx, -hy))
+		outer_points.append(Vector2(-hx, -hy))
+		
+	outer_line.points = outer_points
+	outer_line.width = 3.0
+	outer_line.default_color = Color(0.18, 0.16, 0.20, 0.55)
+	outer_line.antialiased = true
+	wall.add_child(outer_line)
+	
+	wall.position = pos
+	add_child(wall)
+	return wall
+
+func flash_wall(wall_node: StaticBody2D):
+	if not is_instance_valid(wall_node):
+		return
+	var visual = wall_node.get_node_or_null("Visual")
+	var line = wall_node.get_node_or_null("Line")
+	if visual:
+		var original_color = visual.color
+		visual.color = Color(0.24, 0.22, 0.28) # Subtle background flash matching corners
+		var tw = create_tween()
+		tw.tween_property(visual, "color", original_color, 0.2)
+	if line:
+		var original_line_color = line.default_color
+		line.default_color = Color(1.8, 1.6, 2.2, 1.0) # Bright neon outline flash
+		var tw_line = create_tween()
+		tw_line.tween_property(line, "default_color", original_line_color, 0.2)
+
+func flash_corner_wall(wall_node: StaticBody2D):
+	if not is_instance_valid(wall_node):
+		return
+	var visual = wall_node.get_node_or_null("Visual")
+	var line = wall_node.get_node_or_null("Line")
+	if visual:
+		var original_color = visual.color
+		visual.color = Color(0.24, 0.22, 0.28) # Subtle background flash
+		var tw = create_tween()
+		tw.tween_property(visual, "color", original_color, 0.2)
+	if line:
+		var original_line_color = line.default_color
+		line.default_color = Color(1.8, 1.6, 2.2, 1.0) # Bright neon outline flash
+		var tw_line = create_tween()
+		tw_line.tween_property(line, "default_color", original_line_color, 0.2)
 
 func create_bouncers():
-	# Pinball-style bouncers in the middle area
-	# Note: removed the one at exact center (640,400) so the ball can spawn there cleanly
-	var positions = [
-		Vector2(420, 220),
-		Vector2(860, 220),
-		Vector2(500, 580),
-		Vector2(780, 580),
-		Vector2(640, 140),   # upper center
-		Vector2(420, 400),
-		Vector2(860, 400),
-	]
+	var num_players = GameManager.players.size()
+	var positions = []
+	
+	if num_players <= 2:
+		positions = [
+			Vector2(420, 220),
+			Vector2(860, 220),
+			Vector2(500, 580),
+			Vector2(780, 580),
+			Vector2(640, 140),   # upper center
+			Vector2(420, 400),
+			Vector2(860, 400),
+		]
+	else:
+		# 3 and 4 player mode: less bumpers, kept far away from top/bottom player zones
+		positions = [
+			Vector2(380, 400),
+			Vector2(900, 400),
+		]
 	
 	for i in range(positions.size()):
 		var b = BOUNCER_SCENE.instantiate()
 		b.position = positions[i]
 		b.add_to_group("bumpers")  # for reliable manual detection
-		# Alternate types visually (we can expand later)
 		if i % 2 == 0:
 			b.modulate = Color(1, 0.55, 0.15)
 		add_child(b)
@@ -186,9 +450,13 @@ func spawn_random_powerup():
 	var pu = POWERUP_SCENE.instantiate()
 	pu.add_to_group("powerups")
 	
-	# Safe random position in the middle play area (away from bumpers)
-	var margin_x = 220
-	var margin_y = 90
+	# Safe random position in the middle play area (away from bumpers and corner barriers)
+	var num_players = GameManager.players.size()
+	var min_x = 280 if num_players >= 3 else 220
+	var max_x = screen_size.x - min_x
+	var min_y = 280 if (num_players >= 4) else 90
+	var max_y = screen_size.y - 280 if (num_players >= 3) else screen_size.y - 90
+	
 	var bumpers = get_tree().get_nodes_in_group("bumpers")
 	
 	var pos = Vector2.ZERO
@@ -198,8 +466,8 @@ func spawn_random_powerup():
 	while not valid_pos and attempts < 20:
 		attempts += 1
 		pos = Vector2(
-			randf_range(margin_x, screen_size.x - margin_x),
-			randf_range(margin_y, screen_size.y - margin_y)
+			randf_range(min_x, max_x),
+			randf_range(min_y, max_y)
 		)
 		
 		# Check distance to all bumpers
@@ -215,11 +483,10 @@ func spawn_random_powerup():
 	
 	pu.position = pos
 	
-	# Pick random type (weighted a bit toward the fun ones)
+	# Pick random type (REVERSE removed)
 	var types = [
 		pu.Type.SPEED_UP, pu.Type.SPEED_UP,
 		pu.Type.SLOW_DOWN,
-		pu.Type.REVERSE, pu.Type.REVERSE,
 		pu.Type.ICE,
 		pu.Type.BIG_PADDLE,
 		pu.Type.SHRINK_PADDLE,
@@ -235,7 +502,12 @@ func apply_paddle_powerup(effect: Dictionary):
 		pending_paddle_effect = effect
 		return
 	
-	var paddle = left_paddle if target_player == 0 else right_paddle
+	var paddle = null
+	for p in paddles:
+		if is_instance_valid(p) and p.player_index == target_player:
+			paddle = p
+			break
+	
 	if not paddle:
 		return
 	
@@ -252,14 +524,23 @@ func spawn_barrier(player_idx: int):
 	barrier.name = "Barrier_P%d" % player_idx
 	barrier.add_to_group("barriers")
 	
-	# Position behind the paddle. Left paddle is at x = ~70. Right paddle is at x = ~screen_size.x - 70.
-	# We place the barrier at x = 35 (Left) and screen_size.x - 35 (Right)
-	var x_pos = 35.0 if player_idx == 0 else screen_size.x - 35.0
-	barrier.size = Vector2(16, screen_size.y - 48) # spanning vertical area between top and bottom walls
-	barrier.position = Vector2(x_pos - 8, 24)
+	# Position behind the paddle.
+	if player_idx == 0:
+		barrier.size = Vector2(16, screen_size.y - 48)
+		barrier.position = Vector2(35 - 8, 24)
+	elif player_idx == 1:
+		barrier.size = Vector2(16, screen_size.y - 48)
+		barrier.position = Vector2(screen_size.x - 35 - 8, 24)
+	elif player_idx == 2: # Bottom
+		barrier.size = Vector2(screen_size.x - 48, 16)
+		barrier.position = Vector2(24, screen_size.y - 35 - 8)
+	elif player_idx == 3: # Top
+		barrier.size = Vector2(screen_size.x - 48, 16)
+		barrier.position = Vector2(24, 35 - 8)
 	
-	# Glow / energy look: overbright red/orange for Player 0, cyan/blue for Player 1
-	var energy_color = Color(2.5, 0.4, 0.2, 0.85) if player_idx == 0 else Color(0.2, 0.6, 2.5, 0.85)
+	# Glow / energy look: color matched to player's custom color!
+	var p_color = GameManager.players[player_idx]["color"] if player_idx < GameManager.players.size() else Color.WHITE
+	var energy_color = Color(p_color.r * 2.5, p_color.g * 2.5, p_color.b * 2.5, 0.85)
 	barrier.color = energy_color
 	add_child(barrier)
 	
@@ -280,7 +561,11 @@ func spawn_barrier(player_idx: int):
 func _on_ball_hit_paddle(player_idx: int):
 	last_hit_player = player_idx
 	if not pending_paddle_effect.is_empty():
-		var paddle = left_paddle if player_idx == 0 else right_paddle
+		var paddle = null
+		for p in paddles:
+			if is_instance_valid(p) and p.player_index == player_idx:
+				paddle = p
+				break
 		if paddle and pending_paddle_effect.has("paddle_scale"):
 			paddle.set_temporary_scale(pending_paddle_effect.paddle_scale, pending_paddle_effect.get("duration", 5.0))
 		pending_paddle_effect = {}
@@ -289,30 +574,43 @@ func update_score_ui():
 	if not score_label:
 		return
 	var p = GameManager.players
-	var text = "%s: %d    |    %s: %d" % [
-		p[0]["name"] if p.size() > 0 else "P1", p[0]["score"] if p.size() > 0 else 0,
-		p[1]["name"] if p.size() > 1 else "P2", p[1]["score"] if p.size() > 1 else 0
-	]
-	score_label.text = text
+	var parts = []
+	for i in range(p.size()):
+		parts.append("%s: %d" % [p[i]["name"], p[i]["score"]])
+	score_label.text = "    |    ".join(parts)
 
-# Called by Goal.gd when ball enters a goal
-func goal_scored(player_index: int):
+# Called by Goal.gd or safety net when ball enters a goal (owner_idx is goal owner)
+func goal_scored(owner_idx: int):
 	if game_over:
 		return
-	# player_index who owns the goal = the one who SCORED (opponent lost the point)
-	GameManager.add_score(player_index)
+		
+	# Determine who gets the point
+	var scorers = []
+	if last_hit_player != -1 and last_hit_player != owner_idx:
+		scorers.append(last_hit_player)
+	else:
+		# Self-goal or no hit: all other players get a point
+		for i in range(GameManager.players.size()):
+			if i != owner_idx:
+				scorers.append(i)
+	
+	for scorer in scorers:
+		GameManager.add_score(scorer)
+		
 	update_score_ui()
 	
 	# Check for victory condition (first to 10 points wins)
-	if player_index < GameManager.players.size() and GameManager.players[player_index]["score"] >= 10:
-		show_victory_screen(player_index)
-		return
+	for scorer in scorers:
+		if scorer < GameManager.players.size() and GameManager.players[scorer]["score"] >= 10:
+			show_victory_screen(scorer)
+			return
 	
-	SoundManager.play_goal_scored(player_index)
+	SoundManager.play_goal_scored(owner_idx)
 	
 	# Reset paddles and ball
-	if left_paddle: left_paddle.reset_paddle()
-	if right_paddle: right_paddle.reset_paddle()
+	for paddle in paddles:
+		if is_instance_valid(paddle):
+			paddle.reset_paddle()
 	
 	# Clear any remaining powerups
 	for pu in get_tree().get_nodes_in_group("powerups"):
@@ -362,8 +660,9 @@ func show_victory_screen(winner_idx: int):
 		powerup_timer.stop()
 	
 	# Reset paddles
-	if left_paddle: left_paddle.reset_paddle()
-	if right_paddle: right_paddle.reset_paddle()
+	for paddle in paddles:
+		if is_instance_valid(paddle):
+			paddle.reset_paddle()
 	
 	# Clear any remaining powerups
 	for pu in get_tree().get_nodes_in_group("powerups"):
@@ -407,10 +706,10 @@ func show_victory_screen(winner_idx: int):
 	
 	# Final score label
 	var score_text = Label.new()
-	score_text.text = "Final Score\n%s: %d  -  %s: %d" % [
-		p[0]["name"] if p.size() > 0 else "P1", p[0]["score"] if p.size() > 0 else 0,
-		p[1]["name"] if p.size() > 1 else "P2", p[1]["score"] if p.size() > 1 else 0
-	]
+	var score_parts = []
+	for i in range(p.size()):
+		score_parts.append("%s: %d" % [p[i]["name"], p[i]["score"]])
+	score_text.text = "Final Score\n" + "   |   ".join(score_parts)
 	score_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_text.add_theme_font_size_override("font_size", 24)
 	score_text.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
@@ -456,27 +755,43 @@ func _on_main_menu_pressed():
 # ============================
 
 func _physics_process(delta):
-	# Safety net: if the ball somehow flies off the sides (e.g. passed through paddle)
-	# force a goal so it always respawns.
 	if not is_instance_valid(ball):
 		return
+		
+	var num_players = GameManager.players.size()
 	
+	# Safety nets for ball escaping boundaries
 	if ball.position.x < -80:
-		goal_scored(1)
+		goal_scored(0) # Player 0's goal breached
 	elif ball.position.x > screen_size.x + 80:
-		goal_scored(0)
-	
-	# Manual top/bottom wall enforcement (prevents tunneling at high speed)
-	if ball.position.y < 25:
-		ball.position.y = 25
-		ball.velocity.y = abs(ball.velocity.y)
-		if SoundManager:
-			SoundManager.play_wall_hit()
-	elif ball.position.y > screen_size.y - 25:
-		ball.position.y = screen_size.y - 25
-		ball.velocity.y = -abs(ball.velocity.y)
-		if SoundManager:
-			SoundManager.play_wall_hit()
+		goal_scored(1) # Player 1's goal breached
+	elif num_players >= 3 and ball.position.y > screen_size.y + 80:
+		goal_scored(2) # Player 2's goal breached
+	elif num_players >= 4 and ball.position.y < -80:
+		goal_scored(3) # Player 3's goal breached
+		
+	# Wall collision enforcement
+	if num_players <= 3:
+		# Top wall active
+		if ball.position.y < 25:
+			ball.position.y = 25
+			ball.velocity.y = abs(ball.velocity.y)
+			if SoundManager:
+				SoundManager.play_wall_hit()
+			var wall = get_node_or_null("Wall_Top")
+			if wall:
+				flash_wall(wall)
+				
+	if num_players <= 2:
+		# Bottom wall active
+		if ball.position.y > screen_size.y - 25:
+			ball.position.y = screen_size.y - 25
+			ball.velocity.y = -abs(ball.velocity.y)
+			if SoundManager:
+				SoundManager.play_wall_hit()
+			var wall = get_node_or_null("Wall_Bottom")
+			if wall:
+				flash_wall(wall)
 	
 	# Note: Paddle collision logic lives in Ball.gd due to platform-specific issues
 	# (see comments at the top of Ball.gd).
