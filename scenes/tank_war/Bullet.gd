@@ -53,12 +53,21 @@ func _on_body_entered(body):
 	if body == self or body == shooter:
 		return
 		
-	if body.is_in_group("tank"):
+	var target = body
+	if not target.has_method("take_damage") and not target.has_method("take_building_damage") and target.get_parent():
+		if target.get_parent().has_method("take_building_damage") or target.get_parent().has_method("take_damage"):
+			target = target.get_parent()
+		
+	if target.is_in_group("tank") and target.has_method("take_damage"):
 		var killer_id = -1
 		if is_instance_valid(shooter) and "player_id" in shooter:
 			killer_id = shooter.player_id
-		if body.has_method("take_damage"):
-			body.take_damage(damage, killer_id)
+		target.take_damage(damage, killer_id)
+	elif target.has_method("take_building_damage"):
+		target.take_building_damage(damage, global_position)
+	elif target.has_method("take_damage"):
+		target.take_damage(damage)
+		
 	_explode()
 
 func _explode():

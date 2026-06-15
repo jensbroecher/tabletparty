@@ -484,4 +484,3 @@ func get_last_hit_player() -> int:
 		if last_hit != -1:
 			return last_hit
 	return get_closest_player_index()
-
