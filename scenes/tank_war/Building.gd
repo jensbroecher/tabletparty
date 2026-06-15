@@ -23,7 +23,7 @@ var collider: StaticBody3D
 var current_hits: int = 0
 var is_collapsed: bool = false
 var is_sinking: bool = false
-var sink_speed: float = 3.0
+var sink_speed: float = 2.8
 var original_visual_y: float = 0.0
 var collapse_timer: float = 0.0
 
@@ -41,9 +41,9 @@ func _process(delta):
 		
 		# Periodically spawn smoke at the base of the building during collapse
 		collapse_timer += delta
-		if collapse_timer >= 0.12:
+		if collapse_timer >= 0.08: # spawn smoke very rapidly for a thick dust cloud
 			collapse_timer = 0.0
-			var half_size = target_size * 0.4
+			var half_size = target_size * 0.5
 			var base_pos = global_position + Vector3(
 				randf_range(-half_size, half_size),
 				0.2,
@@ -121,10 +121,10 @@ func take_building_damage(amount: int, impact_pos: Vector3):
 		
 	current_hits += amount
 	
-	# Visual feedback - spawn a puff of smoke at impact point
+	# Visual feedback - spawn realistic smoke puff at impact point
 	_spawn_smoke_puff(impact_pos)
 	
-	# Spawn dynamic physical debris (procedural concrete stones)
+	# Spawn dynamic physical debris (color-matched to building textures)
 	_spawn_procedural_debris(impact_pos)
 	
 	# Try to detach a random mesh part from the building and make it fall off
@@ -150,12 +150,12 @@ func collapse():
 	if SoundManager:
 		SoundManager.play_victory()
 		
-	# Spawn a big burst of smoke at collapse start
-	for i in range(6):
+	# Spawn a massive initial dust cloud at collapse start
+	for i in range(12):
 		var base_pos = global_position + Vector3(
-			randf_range(-target_size * 0.3, target_size * 0.3),
+			randf_range(-target_size * 0.4, target_size * 0.4),
 			0.5,
-			randf_range(-target_size * 0.3, target_size * 0.3)
+			randf_range(-target_size * 0.4, target_size * 0.4)
 		)
 		_spawn_smoke_puff(base_pos)
 
@@ -173,38 +173,47 @@ func _detach_random_mesh(impact_pos: Vector3) -> bool:
 	if not mesh_node or not is_instance_valid(mesh_node):
 		return false
 		
-	var orig_global_transform = mesh_node.global_transform
+	var parent_node = mesh_node.get_parent()
+	if not parent_node:
+		return false
+		
+	var parent_global_transform = parent_node.global_transform
 	
 	# Remove from original building hierarchy
-	mesh_node.get_parent().remove_child(mesh_node)
+	parent_node.remove_child(mesh_node)
 	
 	# Create a physical rigid body representing the falling debris part
 	var rb = RigidBody3D.new()
 	rb.collision_layer = 0 # no tank collision
 	rb.collision_mask = 1  # collides with ground only
 	
-	# Create fitting collision shape for the falling piece
+	# IMPORTANT: Prevent collision overlap glitching/teleportation with the building itself
+	if collider:
+		rb.add_collision_exception_with(collider)
+	
+	# Add the mesh to the RigidBody (keeping its original local transform relative to parent)
+	rb.add_child(mesh_node)
+	
+	# Create fitting collision shape for the falling piece aligned with local transform
 	var shape_node = CollisionShape3D.new()
 	var box = BoxShape3D.new()
 	var aabb = mesh_node.mesh.get_aabb()
 	box.size = aabb.size * mesh_node.scale
 	shape_node.shape = box
-	shape_node.position = aabb.get_center() * mesh_node.scale
+	shape_node.transform = mesh_node.transform
+	shape_node.position += aabb.get_center() * mesh_node.scale
 	rb.add_child(shape_node)
 	
-	rb.add_child(mesh_node)
-	mesh_node.transform = Transform3D.IDENTITY # reset local transform to parent rigid body
-	
-	# Spawn in the level
+	# Spawn in the level at parent's global coordinates so it aligns perfectly without offsets/popping
 	get_parent().add_child(rb)
-	rb.global_transform = orig_global_transform
+	rb.global_transform = parent_global_transform
 	
 	# Eject piece away from impact point and building center
-	var dir = (orig_global_transform.origin - impact_pos).normalized()
+	var dir = (orig_global_origin_helper(orig_global_transform_helper(mesh_node, parent_global_transform)) - impact_pos).normalized()
 	dir.y = randf_range(0.3, 0.7) # fly slightly upward
 	dir = dir.normalized()
-	rb.apply_impulse(dir * randf_range(6.0, 14.0))
-	rb.angular_velocity = Vector3(randf_range(-6, 6), randf_range(-6, 6), randf_range(-6, 6))
+	rb.apply_impulse(dir * randf_range(7.0, 15.0))
+	rb.angular_velocity = Vector3(randf_range(-5, 5), randf_range(-5, 5), randf_range(-5, 5))
 	
 	# Slowly shrink and delete after a few seconds
 	var timer = get_tree().create_timer(randf_range(3.5, 4.8))
@@ -217,12 +226,39 @@ func _detach_random_mesh(impact_pos: Vector3) -> bool:
 	
 	return true
 
+# Helper to find global origin safely after detaching
+func orig_global_transform_helper(node: Node3D, parent_transform: Transform3D) -> Transform3D:
+	return parent_transform * node.transform
+
+func orig_global_origin_helper(t: Transform3D) -> Vector3:
+	return t.origin
+
+func _get_building_color() -> Color:
+	if not visual:
+		return Color(0.35, 0.33, 0.3)
+	var meshes = []
+	_find_meshes_recursive(visual, meshes)
+	for mesh_node in meshes:
+		if mesh_node is MeshInstance3D:
+			if mesh_node.material_override:
+				var mat = mesh_node.material_override as StandardMaterial3D
+				if mat:
+					return mat.albedo_color
+			if mesh_node.mesh:
+				var mat = mesh_node.get_active_material(0) as StandardMaterial3D
+				if mat:
+					return mat.albedo_color
+	return Color(0.35, 0.33, 0.3) # Default concrete gray
+
 func _spawn_procedural_debris(impact_pos: Vector3):
 	var num_debris = randi_range(3, 5)
+	var b_color = _get_building_color()
 	for i in range(num_debris):
 		var rb = RigidBody3D.new()
 		rb.collision_layer = 0
 		rb.collision_mask = 1 # ground only
+		if collider:
+			rb.add_collision_exception_with(collider) # avoid overlapping glitches
 		
 		var mesh_instance = MeshInstance3D.new()
 		var box_mesh = BoxMesh.new()
@@ -233,9 +269,13 @@ func _spawn_procedural_debris(impact_pos: Vector3):
 		)
 		mesh_instance.mesh = box_mesh
 		
-		# Stone/debris material matching building
+		# Stone/debris material matching building color
 		var mat = StandardMaterial3D.new()
-		mat.albedo_color = Color(randf_range(0.25, 0.45), randf_range(0.24, 0.42), randf_range(0.22, 0.40))
+		mat.albedo_color = Color(
+			clamp(b_color.r * randf_range(0.8, 1.2), 0, 1),
+			clamp(b_color.g * randf_range(0.8, 1.2), 0, 1),
+			clamp(b_color.b * randf_range(0.8, 1.2), 0, 1)
+		)
 		mat.roughness = 0.85
 		mesh_instance.material_override = mat
 		
@@ -254,7 +294,7 @@ func _spawn_procedural_debris(impact_pos: Vector3):
 		var dir = (impact_pos - global_position).normalized()
 		dir += Vector3(randf_range(-0.4, 0.4), randf_range(0.2, 0.8), randf_range(-0.4, 0.4))
 		dir = dir.normalized()
-		rb.apply_impulse(dir * randf_range(8.0, 16.0))
+		rb.apply_impulse(dir * randf_range(7.0, 14.0))
 		rb.angular_velocity = Vector3(randf_range(-7, 7), randf_range(-7, 7), randf_range(-7, 7))
 		
 		# Clean up timer
@@ -270,35 +310,39 @@ func _spawn_smoke_puff(pos: Vector3):
 	var p = CPUParticles3D.new()
 	p.emitting = false
 	p.one_shot = true
-	p.amount = 10
-	p.lifetime = 1.1
-	p.explosiveness = 0.85
+	p.amount = 35 # increased amount for realistic volume
+	p.lifetime = randf_range(1.5, 2.4)
+	p.explosiveness = 0.88
 	
 	p.direction = Vector3.UP
-	p.spread = 45.0
-	p.gravity = Vector3(0, 0.8, 0) # drift up slowly
-	p.initial_velocity_min = 2.5
-	p.initial_velocity_max = 5.0
+	p.spread = 85.0
+	p.gravity = Vector3(0, 0.4, 0) # drift up very slowly
+	p.initial_velocity_min = 2.8
+	p.initial_velocity_max = 5.8
+	p.damping_min = 2.0
+	p.damping_max = 4.0 # decelerate particles for cloud expansion look
 	
 	var mesh = SphereMesh.new()
-	mesh.radius = 0.8
-	mesh.height = 1.6
+	mesh.radius = 1.0
+	mesh.height = 2.0
 	p.mesh = mesh
 	
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 	mat.billboard_mode = StandardMaterial3D.BILLBOARD_PARTICLES
-	mat.use_particle_alpha = true
-	mat.albedo_color = Color(0.5, 0.5, 0.5, 0.22)
+	mat.vertex_color_use_as_albedo = true # critical to enable gradient transparency
+	mat.transparency = StandardMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.62, 0.62, 0.62, 0.16)
 	p.material_override = mat
 	
 	var size_curve = Curve.new()
-	size_curve.add_point(Vector2(0, 0.6))
-	size_curve.add_point(Vector2(1, 2.2))
+	size_curve.add_point(Vector2(0, 0.5))
+	size_curve.add_point(Vector2(0.25, 1.9))
+	size_curve.add_point(Vector2(1, 3.6))
 	p.scale_amount_curve = size_curve
 	
 	var color_ramp = Gradient.new()
-	color_ramp.set_color(0, Color(0.65, 0.65, 0.65, 0.3))
+	color_ramp.set_color(0, Color(0.65, 0.65, 0.65, 0.22))
 	color_ramp.set_color(1, Color(0.65, 0.65, 0.65, 0.0))
 	p.color_ramp = color_ramp
 	
@@ -306,7 +350,7 @@ func _spawn_smoke_puff(pos: Vector3):
 	p.global_position = pos
 	p.emitting = true
 	
-	var timer = get_tree().create_timer(1.3)
+	var timer = get_tree().create_timer(2.5)
 	timer.timeout.connect(p.queue_free)
 
 func _find_meshes_recursive(node: Node, list: Array):
