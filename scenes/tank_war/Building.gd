@@ -298,8 +298,8 @@ func _spawn_smoke_puff(pos: Vector3):
 	p.scale_amount_curve = size_curve
 	
 	var color_ramp = Gradient.new()
-	color_ramp.add_color_stop(0.0, Color(0.65, 0.65, 0.65, 0.3))
-	color_ramp.add_color_stop(1.0, Color(0.65, 0.65, 0.65, 0.0))
+	color_ramp.set_color(0, Color(0.65, 0.65, 0.65, 0.3))
+	color_ramp.set_color(1, Color(0.65, 0.65, 0.65, 0.0))
 	p.color_ramp = color_ramp
 	
 	get_parent().add_child(p)
