@@ -56,6 +56,12 @@ func _ready():
 	is_focusing_on_explosion = false
 	game_over = false
 	
+	# Disable keyboard/UI focus on all touch control buttons to prevent keyboard takeover
+	var ui_node = get_node_or_null("UI")
+	if ui_node:
+		for btn in ui_node.find_children("*", "Button", true, false):
+			btn.focus_mode = Control.FOCUS_NONE
+	
 	var num_players = clamp(GameManager.players.size(), 2, 4)
 	# Dynamic win condition points based on player count
 	if num_players == 2:
