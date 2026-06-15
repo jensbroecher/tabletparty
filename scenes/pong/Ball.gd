@@ -463,6 +463,25 @@ func update_visual():
 		if visual: visual.color = Color.WHITE
 	queue_redraw()
 
+func get_closest_player_index() -> int:
+	var closest_idx = -1
+	var min_dist = 999999.0
+	var p_node = get_parent()
+	if p_node:
+		var paddles_list = p_node.paddles if "paddles" in p_node else []
+		for paddle in paddles_list:
+			if is_instance_valid(paddle):
+				var dist = position.distance_to(paddle.position)
+				if dist < min_dist:
+					min_dist = dist
+					closest_idx = paddle.player_index
+	return closest_idx
+
 func get_last_hit_player() -> int:
-	# Will be set by PongArena when ball bounces off a paddle
-	return get_parent().last_hit_player if get_parent().has_method("get_last_hit_player") else -1
+	var p_node = get_parent()
+	if p_node and "last_hit_player" in p_node:
+		var last_hit = p_node.last_hit_player
+		if last_hit != -1:
+			return last_hit
+	return get_closest_player_index()
+
